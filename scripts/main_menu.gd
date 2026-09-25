@@ -22,8 +22,10 @@ const PRECARGA := [
 	"res://songs/end-game.mp3", "res://songs/coin.mp3", "res://songs/erro.mp3",
 	"res://songs/spare.mp3", "res://songs/strike-1.mp3", "res://songs/strike-2.mp3",
 	"res://songs/strike-3.mp3", "res://songs/bola-roll_.mp3",
-	"res://fonts/arcade_impact.ttf", "res://fonts/painel_arcade.ttf", "res://sprites/logoofi.png",
+	"res://fonts/arcade_impact.ttf", "res://fonts/painel_arcade.ttf",
 	"res://sprites/pista_mascara.png",
+	# (O logo NÃO entra aqui: o menu o carrega na hora, e pedir com load()
+	# algo que está na fila de fundo faz a tela esperar a fila inteira.)
 ]
 const SHADER_DA_PISTA := preload("res://shaders/brilho_pista.gdshader")
 var _precarga_pendente: Array = []
@@ -102,7 +104,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_forcar_ocultar_cursor()
 	_iniciar_precarga()
-	_aquecer_shader_da_pista()
+	_preparar_modal_escondido()
 	
 	_configurar_led()
 	call_deferred("_enviar_led", "MENU")
@@ -147,17 +149,112 @@ func _iniciar_precarga() -> void:
 
 ## Compila o shader do brilho da pista já no menu, num pontinho quase
 ## invisível no canto: compilar na primeira imagem da pista engasgava.
-func _aquecer_shader_da_pista() -> void:
+## A máscara vem da carga em segundo plano (pedir com load() enquanto ela
+## ainda carregava fazia a tela esperar a pista inteira carregar).
+func _aquecer_shader_da_pista(mascara: Texture2D) -> void:
+	if mascara == null:
+		return
 	var ponto := Sprite2D.new()
-	ponto.texture = load("res://sprites/pista_mascara.png")
+	ponto.texture = mascara
 	ponto.centered = false
 	ponto.scale = Vector2(0.004, 0.004)
 	ponto.modulate = Color(1, 1, 1, 0.02)
 	var mat := ShaderMaterial.new()
 	mat.shader = SHADER_DA_PISTA
-	mat.set_shader_parameter("mascara", ponto.texture)
+	mat.set_shader_parameter("mascara", mascara)
 	ponto.material = mat
 	add_child(ponto)
+
+
+## O MODAL DE JOGADORES E AS LETRAS DA PARTIDA FICAM PRONTOS NO MENU.
+##
+## Montar o modal na hora do START (40 e tantos painéis) e desenhar pela
+## primeira vez as letras grandes com contorno ("1 PLAYER", "STRIKE!",
+## "ROUND 2"...) era o que travava a TV Box na hora H. O modal é montado
+## escondido logo que o menu assenta, e cada letra de cada tamanho é
+## desenhada uma vez, quase invisível, UMA POR QUADRO, enquanto o menu está
+## parado — sem nenhum quadro pesado. O cache fica na fonte (GameConfig
+## guarda as fontes durante o jogo todo).
+const ESPERA_PARA_PREPARAR := 0.8
+const LETRAS_DA_PARTIDA := [
+	# [tamanho, contorno, texto] da fonte arcade — as medidas de game.gd
+	[108, 14, "STRIKE!"],
+	[88, 14, "ACERTO!SPAREPRAFO"],
+	[78, 14, "PLAYER•ROUND0123456789"],
+	[52, 14, "RESULTADOFINALVENCEU!"],
+	[48, 14, "RESULTADOFINALVENCEU!EMPATPLYR12"],
+	[46, 14, "NOVORECORDEVENCEU!EMPAT12"],
+]
+
+func _preparar_modal_escondido() -> void:
+	await get_tree().create_timer(ESPERA_PARA_PREPARAR).timeout
+	if not is_inside_tree() or not pode_iniciar or seletor_jogadores_ativo or layer_selecao_jogadores != null:
+		return
+	_criar_overlay_selecao_jogadores()
+	layer_selecao_jogadores.visible = false
+	# As letras dos dois estados do modal (1 e 2 jogadores).
+	var combos: Array = []
+	for pulsos in [1, 2]:
+		pulsos_start = pulsos
+		timer_selecao_jogadores = tempo_selecao_jogadores
+		_atualizar_texto_selecao_jogadores()
+		combos.append_array(_combos_de_letras(layer_selecao_jogadores))
+	pulsos_start = 0
+	var arcade: Font = load("res://fonts/arcade_impact.ttf") if ResourceLoader.exists("res://fonts/arcade_impact.ttf") else null
+	if arcade != null:
+		for item: Array in LETRAS_DA_PARTIDA:
+			combos.append([arcade, item[0], item[1], item[2]])
+	await _aquecer_letras(combos)
+
+
+func _combos_de_letras(raiz: Node) -> Array:
+	var r: Array = []
+	for l in raiz.find_children("*", "Label", true, false):
+		var lbl := l as Label
+		r.append([lbl.get_theme_font("font"), lbl.get_theme_font_size("font_size"), lbl.get_theme_constant("outline_size"), lbl.text])
+	return r
+
+
+func _aquecer_letras(combos: Array) -> void:
+	var camada := CanvasLayer.new()
+	camada.layer = -50
+	add_child(camada)
+	var sonda := Label.new()
+	sonda.position = Vector2(20, 20)
+	sonda.modulate.a = 0.01
+	sonda.add_theme_color_override("font_outline_color", Color(0.01, 0.01, 0.02))
+	sonda.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.70))
+	sonda.add_theme_constant_override("shadow_offset_x", 5)
+	sonda.add_theme_constant_override("shadow_offset_y", 5)
+	camada.add_child(sonda)
+	var feitos := {}
+	for c: Array in combos:
+		var fonte: Font = c[0]
+		if fonte == null:
+			continue
+		sonda.add_theme_font_override("font", fonte)
+		sonda.add_theme_font_size_override("font_size", int(c[1]))
+		sonda.add_theme_constant_override("outline_size", int(c[2]))
+		for ch in String(c[3]):
+			if ch == " ":
+				continue
+			var chave := "%d|%d|%d|%s" % [fonte.get_instance_id(), int(c[1]), int(c[2]), ch]
+			if feitos.has(chave):
+				continue
+			feitos[chave] = true
+			sonda.text = ch
+			await get_tree().process_frame
+			if not is_inside_tree() or not pode_iniciar:
+				if is_instance_valid(camada):
+					camada.queue_free()
+				return
+	camada.queue_free()
+
+
+func _mostrar_overlay_selecao() -> void:
+	if layer_selecao_jogadores == null or not is_instance_valid(layer_selecao_jogadores):
+		_criar_overlay_selecao_jogadores()
+	layer_selecao_jogadores.visible = true
 
 
 func _colher_precarga() -> void:
@@ -168,6 +265,8 @@ func _colher_precarga() -> void:
 			continue
 		if estado == ResourceLoader.THREAD_LOAD_LOADED:
 			GameConfig.precarregados[caminho] = ResourceLoader.load_threaded_get(caminho)
+			if caminho == "res://sprites/pista_mascara.png":
+				_aquecer_shader_da_pista(GameConfig.precarregados[caminho] as Texture2D)
 		_precarga_pendente.remove_at(i)
 
 
@@ -207,7 +306,7 @@ func _registrar_pulso_start() -> void:
 		timer_selecao_jogadores = tempo_selecao_jogadores
 		_enviar_led("BLUE")
 		_tocar_som_coin()
-		_criar_overlay_selecao_jogadores()
+		_mostrar_overlay_selecao()
 		_atualizar_texto_selecao_jogadores()
 		return
 
@@ -643,7 +742,7 @@ func _atualizar_texto_selecao_jogadores() -> void:
 	_aplicar_estado_cards_players()
 
 	if pulsos_start >= 2:
-		txt_modo_selecao.text = "🎳🎳  2 PLAYERS"
+		txt_modo_selecao.text = "2 PLAYERS"
 		txt_modo_selecao.add_theme_color_override("font_color", Color(1.0, 0.16, 0.12))
 
 		if txt_timer_selecao != null:
@@ -657,7 +756,7 @@ func _atualizar_texto_selecao_jogadores() -> void:
 			barra_timer_selecao.color = Color(1.0, 0.12, 0.10, 1.0)
 
 	else:
-		txt_modo_selecao.text = "🎳  1 PLAYER"
+		txt_modo_selecao.text = "1 PLAYER"
 		txt_modo_selecao.add_theme_color_override("font_color", Color(0.10, 0.75, 1.0))
 
 		if txt_timer_selecao != null:
@@ -1218,7 +1317,12 @@ func _iniciar_jogo() -> void:
 	if start_button != null:
 		start_button.disabled = true
 
-	# Monta a pista mantendo a imagem do menu até a nova cena estar pronta.
+	# A pista vem da carga em segundo plano. Se ainda não terminou, espera
+	# quadro a quadro (o menu continua animando) em vez de travar a tela
+	# esperando o carregamento.
+	while CENA_DO_JOGO in _precarga_pendente \
+			and ResourceLoader.load_threaded_get_status(CENA_DO_JOGO) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		await get_tree().process_frame
 	var recurso: PackedScene = GameConfig.precarregados.get(CENA_DO_JOGO) as PackedScene
 	if recurso == null:
 		if CENA_DO_JOGO in _precarga_pendente:
@@ -1242,13 +1346,15 @@ func _iniciar_jogo() -> void:
 		return
 
 	_parar_musica_menu()
-	# A última imagem do menu fica por cima e se desfaz enquanto a pista
-	# monta por baixo: sem tela de carregamento e sem quadro cinza.
-	TransicaoFoto.cobrir(get_tree())
+	# O menu escurece rápido, a pista monta por baixo do véu e aparece com
+	# a animação de montagem dela: sem tela de carregamento, sem tela cinza.
+	var arvore := get_tree()
+	await Cortina.fechar(arvore)
 	var pista: Node = recurso.instantiate()
-	get_tree().root.add_child(pista)
-	get_tree().current_scene = pista
+	arvore.root.add_child(pista)
+	arvore.current_scene = pista
 	queue_free()
+	Cortina.abrir(arvore)
 
 
 
@@ -1268,8 +1374,9 @@ func _iniciar_demo() -> void:
 
 	_parar_musica_menu()
 
-	TransicaoFoto.cobrir(get_tree())
+	await Cortina.fechar(get_tree())
 	var erro: int = get_tree().change_scene_to_file(CENA_DEMO)
+	Cortina.abrir(get_tree())
 
 	if erro != OK:
 		push_error("Erro ao carregar cena de demo: " + CENA_DEMO)

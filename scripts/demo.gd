@@ -187,8 +187,9 @@ func _trocar_cena_seguro(caminho: String) -> void:
 	if tree == null:
 		return
 
-	TransicaoFoto.cobrir(tree)
+	await Cortina.fechar(tree)
 	var erro: int = tree.change_scene_to_file(caminho)
+	Cortina.abrir(tree)
 	if erro != OK:
 		push_error("Erro ao trocar cena para: " + caminho)
 

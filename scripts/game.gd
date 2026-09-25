@@ -5839,8 +5839,7 @@ func voltar_para_main() -> void:
 		push_error("Cena não encontrada: " + caminho)
 		return
 
-	TransicaoFoto.cobrir(get_tree())
-	get_tree().change_scene_to_file(caminho)
+	Cortina.trocar_para(get_tree(), caminho)
 	
 
 

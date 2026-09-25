@@ -22,6 +22,7 @@ const FONTE := "res://fonts/arcade_impact.ttf"
 const SOM_IMPACTO := "res://songs/coin.mp3"
 
 const DURACAO := 3.3
+const INICIO_DA_CARGA_S := 1.3
 ## Escala do logo na tela (placa com 820 px) e posições tiradas do logo
 ## original: o alvo fica 20 px à esquerda e 272 px acima do centro da placa.
 const ESCALA_FINAL := 820.0 / 1280.0
@@ -42,7 +43,10 @@ var _menu_pedido := false
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
-	_menu_pedido = ResourceLoader.load_threaded_request(MENU) == OK
+	# O menu começa a carregar depois do impacto do alvo: a parte mais
+	# animada da abertura roda sem ninguém disputando a TV Box.
+	get_tree().create_timer(INICIO_DA_CARGA_S).timeout.connect(func() -> void:
+		_menu_pedido = ResourceLoader.load_threaded_request(MENU) == OK)
 
 	# O alvo nasce ESCONDIDO atrás da placa (z menor) e sobe de trás dela:
 	# a base dele, cortada reta no desenho, nunca aparece.
@@ -248,5 +252,4 @@ func _ir_para_o_menu() -> void:
 	if recurso == null:
 		recurso = load(MENU)
 	_saindo = true
-	TransicaoFoto.cobrir(get_tree())
-	get_tree().change_scene_to_packed(recurso)
+	Cortina.trocar_para(get_tree(), recurso)

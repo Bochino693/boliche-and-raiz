@@ -109,6 +109,8 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Mantém em dia a proteção de clique (esta tela segura o evento para si).
+	ArcadeControls.eh_da_placa(event)
 	get_viewport().set_input_as_handled()
 	if _terminado or event.is_echo():
 		return
@@ -140,6 +142,6 @@ func _concluir() -> void:
 	_terminado = true
 	ArcadeControls.gravar(_botoes)
 	_pedido.text = "PRONTO!"
-	_dica.text = "GRAVADO. PARA REFAZER: L3, OU SEGURE UM BOTÃO 5 s NO MENU"
+	_dica.text = "GRAVADO. PARA REFAZER: L3, OU SEGURE UM BOTÃO 10 s NO MENU"
 	await get_tree().create_timer(1.6).timeout
 	get_tree().change_scene_to_file(MENU)

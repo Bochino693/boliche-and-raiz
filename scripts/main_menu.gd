@@ -878,7 +878,7 @@ func _mostrar_aviso_sem_funcao(event: InputEvent) -> void:
 		_aplicar_fonte_modal(_aviso_sem_funcao, 30, Color(1.0, 0.86, 0.2), 8)
 		camada.add_child(_aviso_sem_funcao)
 	var codigo := ArcadeControls.codigo_do_evento(event)
-	_aviso_sem_funcao.text = "%s SEM FUNÇÃO\nSEGURE QUALQUER BOTÃO DA PLACA 5 s PARA CONFIGURAR" % ArcadeControls.texto_do_codigo(codigo)
+	_aviso_sem_funcao.text = "%s SEM FUNÇÃO\nSEGURE QUALQUER BOTÃO DA PLACA 10 s PARA CONFIGURAR" % ArcadeControls.texto_do_codigo(codigo)
 	_aviso_sem_funcao.modulate.a = 1.0
 	if _tween_aviso != null:
 		_tween_aviso.kill()

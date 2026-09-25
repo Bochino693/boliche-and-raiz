@@ -101,11 +101,6 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	_forcar_ocultar_cursor()
-	# Primeira vez nesta TV Box: pede os botões da placa um por um.
-	if OS.get_name() == "Android" and not ArcadeControls.mapeamento_gravado and not GameConfig.assistente_de_botoes_ja_ofertado:
-		GameConfig.assistente_de_botoes_ja_ofertado = true
-		get_tree().change_scene_to_file.call_deferred(CENA_TESTE)
-		return
 	_iniciar_precarga()
 	_aquecer_shader_da_pista()
 	

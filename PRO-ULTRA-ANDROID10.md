@@ -17,15 +17,15 @@ Esta variante parte do projeto atualizado `boliche-and-raiz`. Preserva as cenas,
 
 ### Botões: só a placa Zero Delay
 
-Os comandos do jogo vêm **somente** dos botões da Zero Delay. Teclado, controle remoto da TV Box (OK, MENU, VOLTAR) e as ações `ui_*` do Godot não fazem nada; o VOLTAR do remoto também não fecha mais o jogo.
+Os comandos do jogo vêm **somente** da placa Zero Delay. Teclado, controle remoto da TV Box (OK, MENU, VOLTAR) e as ações `ui_*` do Godot não fazem nada, e o VOLTAR do remoto não fecha mais o jogo.
 
-O Android numera os botões da placa de outro jeito que o Windows. Por isso o mapeamento é **gravado na própria TV Box**:
+O Android numera os botões da placa de outro jeito que o Windows. Para acertar a ordem na TV Box:
 
-1. Na primeira vez que o APK abre, aparece a tela **CONFIGURAR BOTÕES DA PLACA**.
+1. No menu, **segure qualquer botão da placa por 5 segundos** (ou aperte L3). Abre a tela **CONFIGURAR BOTÕES DA PLACA**.
 2. Aperte, na ordem pedida: START, Z (quadrado), X, C (bolinha), V (triângulo), B (R1), SELECT e L3.
-3. Um botão já usado é recusado. No fim aparece **PRONTO!** e o jogo volta ao menu.
+3. A linha **SINAL RECEBIDO** mostra na hora o que a placa enviou (botão ou tecla), o que serve de diagnóstico. Um botão já usado é recusado. No fim aparece **PRONTO!** e o mapeamento fica gravado na TV Box.
 
-Para refazer: L3 em qualquer tela, ou segure qualquer botão da placa por 5 segundos no menu. Se ninguém apertar nada por 20 segundos, a tela volta ao menu sem alterar nada. Sem mapeamento gravado, valem os índices do Input Map da tabela acima.
+A placa é aceita do jeito que o Android a entregar: como botão de joystick ou, nas placas genéricas que se apresentam como teclado, como tecla. Só as teclas aprendidas nessa tela contam. Se ninguém apertar nada por 20 segundos, a tela volta ao menu sem alterar nada. Sem mapeamento gravado, valem os índices do Input Map da tabela acima.
 
 ### Partida
 
@@ -35,8 +35,8 @@ Não há tela de carregamento: a pista é carregada em segundo plano enquanto o 
 
 ### Desempenho na TV Box
 
-- O jogo desenha no tamanho dele (1536 × 1024) e a imagem pronta é ampliada para o HDMI. Antes ele desenhava na resolução da saída (até 4K), o que multiplicava o trabalho da placa de vídeo.
-- O brilho animado das canaletas voltou na TV Box. As máscaras vêm prontas em `sprites/pista_mascara.png` (gerada por `tools/gerar_mascara_pista.py`) e o shader é compilado ainda no menu.
+- A resolução de desenho é a original (nítida na saída HDMI).
+- O brilho animado das canaletas voltou na TV Box. As máscaras vêm prontas em `sprites/pista_mascara.png` (gerada por `tools/gerar_mascara_pista.py`); cerca de 80% da tela não tem brilho e pula a conta. O shader é compilado ainda no menu.
 - As animações de montagem da pista rodam na velocidade normal.
 
 No Android esta variante exporta usando o APK pronto do Godot, sem Gradle: a Zero Delay funciona via HID, mas LEDs conectados ao Arduino USB não funcionam neste APK. A saída COM4 para LED segue disponível nos testes no PC.

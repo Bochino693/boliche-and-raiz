@@ -310,6 +310,18 @@ var processando_impacto: bool = false
 var aguardando_fim_bola: bool = false
 var intro_em_andamento: bool = true
 var aceitando_input: bool = false
+## Jogada acionada enquanto a pista ainda não aceitava (ver _input).
+var _jogada_pendente: String = ""
+var _jogada_pendente_ms: int = 0
+const VALIDADE_JOGADA_PENDENTE_MS := 10000
+## Esperas entre jogadas (antes: 1,65 / 2,30 / 2,10 / 0,45 / 2,00 s).
+const ESPERA_FISICA_S := 1.2
+const ESPERA_STRIKE_S := 1.8
+const ESPERA_ROUND_FECHADO_S := 1.6
+const ESPERA_PROXIMA_TENTATIVA_S := 0.3
+const ESPERA_FIM_DE_ROUND_S := 1.5
+const MESMA_BOLA_MS := 1200
+var _ultima_jogada_ms: int = -100000
 var contador_strike_assist_c: int = 0
 
 @onready var bola: Node = get_node_or_null("Bola")
@@ -512,6 +524,8 @@ func _ready() -> void:
 	placar = resolver_no("Placar") as Label
 	mapa_label = resolver_no("MapaLabel") as Label
 	status_label = resolver_no("StatusLabel") as Label
+	if status_label != null:
+		status_label.visible = false
 	round_label = resolver_no("RoundLabel") as Label
 	banner_label = resolver_no("BannerLabel") as Label
 
@@ -2173,10 +2187,6 @@ func animar_intro_partida() -> void:
 		tw.tween_property(placar, "position", Vector2(96, 18), 0.78).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(placar, "modulate:a", 1.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
-	if status_label != null:
-		status_label.add_theme_font_size_override("font_size", 33)
-		tw.tween_property(status_label, "position", Vector2(150, 330), 0.86).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_property(status_label, "modulate:a", 1.0, 0.44).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 	if mapa_panel != null:
 		tw.tween_property(mapa_panel, "position", Vector2(738, 382), 0.72).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -3844,20 +3854,11 @@ func atualizar_status(msg: String = "") -> void:
 			lbl_d.text = "%d  /  10  PINOS DERRUBADOS" % pinos_derrubados_no_round
 			_aplicar_fonte_painel(lbl_d, 27, COR_TEXTO_BRANCO, 6)
 
-	if status_label == null:
-		return
-
-	if msg == "":
+	# O texto amarelo no alto da pista ("PREPARE-SE PARA JOGAR!" etc.) saiu:
+	# repetia o que o aviso central (ROUND, ACERTO!, STRIKE...) já mostra.
+	if status_label != null:
 		status_label.text = ""
-	else:
-		status_label.text = msg
-		status_label.position = Vector2(112, 300)
-		status_label.size = Vector2(800, 110)
-		status_label.z_index = 1001
-		status_label.modulate.a = 1.0
-		_aplicar_fonte_painel(status_label, 42, COR_TEXTO_YELLOW, 8)
-		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		status_label.visible = false
 
 
 
@@ -3955,6 +3956,7 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if intro_em_andamento:
+		_guardar_jogada_pendente(event)
 		return
 
 	if _evento_conta_como_atividade(event):
@@ -3970,10 +3972,15 @@ func _input(event: InputEvent) -> void:
 				call_deferred("_reiniciar_com_credito")
 		return
 
-	if not aceitando_input:
+	if jogo_finalizado:
 		return
 
-	if jogo_finalizado:
+	# A JOGADA NÃO SE PERDE. Depois de cada lançamento o jogo fica alguns
+	# instantes sem aceitar jogada (pinos caindo, resultado, reposição). Um
+	# sensor acionado nesse meio-tempo antes era ignorado — o "comando
+	# travado". Agora ele fica guardado e sai assim que a pista liberar.
+	if not aceitando_input or intro_em_andamento or transicao_round_em_andamento or jogando_trajeto:
+		_guardar_jogada_pendente(event)
 		return
 
 	var tecla_jogada: String = _obter_tecla_da_action(event)
@@ -4241,6 +4248,9 @@ func _process(delta: float) -> void:
 			abrir_modal_inatividade()
 			return
 
+	if _jogada_pendente != "":
+		_soltar_jogada_pendente()
+
 	tempo_hover_acc += delta
 	tempo_hud_acc += delta
 
@@ -4256,6 +4266,29 @@ func _process(delta: float) -> void:
 		hud_sujo = false
 		atualizar_placar()
 
+
+
+func _guardar_jogada_pendente(event: InputEvent) -> void:
+	var tecla: String = _obter_tecla_da_action(event)
+	if tecla == "":
+		return
+	# A mesma bola passando por dois sensores vizinhos não vira duas jogadas:
+	# logo depois de um lançamento, outro sensor é a mesma bola.
+	if Time.get_ticks_msec() - _ultima_jogada_ms < MESMA_BOLA_MS:
+		return
+	_jogada_pendente = tecla
+	_jogada_pendente_ms = Time.get_ticks_msec()
+
+
+func _soltar_jogada_pendente() -> void:
+	if Time.get_ticks_msec() - _jogada_pendente_ms > VALIDADE_JOGADA_PENDENTE_MS or jogo_finalizado or tela_final_ativa:
+		_jogada_pendente = ""
+		return
+	if intro_em_andamento or not aceitando_input or transicao_round_em_andamento or jogando_trajeto:
+		return
+	var tecla := _jogada_pendente
+	_jogada_pendente = ""
+	executar_jogada_por_tecla(tecla)
 
 
 func executar_jogada_por_tecla(tecla: String) -> void:
@@ -4274,6 +4307,7 @@ func executar_jogada_por_tecla(tecla: String) -> void:
 
 	aceitando_input = false
 	jogando_trajeto = true
+	_ultima_jogada_ms = Time.get_ticks_msec()
 
 	bloquear_spare_pos_c = (
 		tentativa_atual >= 2
@@ -4324,7 +4358,7 @@ func executar_jogada_por_tecla(tecla: String) -> void:
 
 	if bola.has_method("lancar_bola"):
 		bola.lancar_bola(dir, forca, spin)
-		tocar_som_inicio_da_jogada()
+		_tocar_som_inicio_com_a_bola()
 		aplicar_zoom_jogada()
 
 		if has_method("_animar_rastro_bola_ao_lancar"):
@@ -5301,7 +5335,9 @@ func finalizar_jogada() -> void:
 	aceitando_input = false
 
 	# Espera a física terminar antes de mostrar STRIKE / SPARE / ACERTO / ERRO.
-	await get_tree().create_timer(1.65).timeout
+	# (Esperas mais curtas que antes: a pista travava a placa por até 6 s
+	# depois de um strike. As animações continuam rodando por cima.)
+	await get_tree().create_timer(ESPERA_FISICA_S).timeout
 
 	var em_pe: int = contar_pinos_em_pe()
 	var derrubados_nesta_jogada: int = max(0, pinos_antes_da_jogada - em_pe)
@@ -5322,7 +5358,7 @@ func finalizar_jogada() -> void:
 	if foi_strike:
 		registrar_resultado_round(10, true, false)
 		transicao_round_em_andamento = true
-		await get_tree().create_timer(2.30).timeout
+		await get_tree().create_timer(ESPERA_STRIKE_S).timeout
 		await avancar_round()
 		return
 
@@ -5332,7 +5368,7 @@ func finalizar_jogada() -> void:
 		registrar_resultado_round(pinos_derrubados_no_round, false, foi_spare)
 
 		transicao_round_em_andamento = true
-		await get_tree().create_timer(2.10).timeout
+		await get_tree().create_timer(ESPERA_ROUND_FECHADO_S).timeout
 		await avancar_round()
 		return
 
@@ -5340,7 +5376,7 @@ func finalizar_jogada() -> void:
 		tecla_anterior_no_round = ultima_tecla_jogada
 		tentativa_atual += 1
 
-		await get_tree().create_timer(0.45).timeout
+		await get_tree().create_timer(ESPERA_PROXIMA_TENTATIVA_S).timeout
 
 		atualizar_status()
 		atualizar_hub_play()
@@ -5353,7 +5389,7 @@ func finalizar_jogada() -> void:
 	registrar_resultado_round(pinos_derrubados_no_round, false, false)
 
 	transicao_round_em_andamento = true
-	await get_tree().create_timer(2.00).timeout
+	await get_tree().create_timer(ESPERA_FIM_DE_ROUND_S).timeout
 	await avancar_round()
 
 
@@ -6082,6 +6118,18 @@ func _tocar_impactos_derrubada_async(lista: Array) -> void:
 	volume_grupo = clamp(volume_grupo, -8.0, 4.0)
 
 	tocar_som_impacto_individual(volume_grupo)
+
+
+## O som do lançamento sai junto com a bola na tela: espera o quadro em
+## que ela já foi desenhada (e a folga de GameConfig), sem segurar nada.
+func _tocar_som_inicio_com_a_bola() -> void:
+	var esta_jogada := token_jogada_atual
+	await RenderingServer.frame_post_draw
+	if GameConfig.atraso_som_jogada > 0.0:
+		await get_tree().create_timer(GameConfig.atraso_som_jogada).timeout
+	if esta_jogada != token_jogada_atual or not is_inside_tree():
+		return
+	tocar_som_inicio_da_jogada()
 
 
 func tocar_som_inicio_da_jogada() -> void:

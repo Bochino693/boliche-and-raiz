@@ -3,10 +3,11 @@ extends Node2D
 ## ABERTURA LAZER & SPORT GAMES — o que aparece quando o app abre, no
 ## lugar da tela preta.
 ##
-## Começa exatamente como a imagem de inicialização do Android (o alvo
-## pequeno no centro, sprites/marca/splash_giro_*.png), então não há pulo:
-## o alvo cresce com um impacto, a placa "Lazer & Sport" sobe, "GAMES"
-## entra letra por letra e um brilho passa pela placa. Enquanto isso o menu
+## Começa exatamente como a imagem de inicialização do Android (só o fundo
+## escuro com o halo, sprites/marca/splash_giro_*.png), então não há pulo.
+## O emblema só aparece na montagem: a placa "Lazer & Sport" sobe, o alvo
+## sai de trás dela com um impacto, "GAMES" entra letra por letra e um
+## brilho passa pela placa. Enquanto isso o menu
 ## carrega em segundo plano; no fim, a abertura se desfaz por cima do menu.
 ##
 ## As imagens vêm em várias larguras (tools/gerar_marca.py) e a abertura
@@ -20,11 +21,10 @@ const PERCENTUAIS := [25, 50, 100]
 const FONTE := "res://fonts/arcade_impact.ttf"
 const SOM_IMPACTO := "res://songs/coin.mp3"
 
-const DURACAO := 3.1
+const DURACAO := 3.3
 ## Escala do logo na tela (placa com 820 px) e posições tiradas do logo
 ## original: o alvo fica 20 px à esquerda e 272 px acima do centro da placa.
 const ESCALA_FINAL := 820.0 / 1280.0
-const ESCALA_INICIAL := ESCALA_FINAL * 0.35   # igual à imagem de inicialização
 const CENTRO_ALVO := Vector2(492, 640)
 const CENTRO_PLACA := Vector2(512, 912)
 
@@ -44,9 +44,13 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
 	_menu_pedido = ResourceLoader.load_threaded_request(MENU) == OK
 
+	# O alvo nasce ESCONDIDO atrás da placa (z menor) e sobe de trás dela:
+	# a base dele, cortada reta no desenho, nunca aparece.
 	_alvo = _peca("alvo")
-	_alvo.position = CENTRO_ALVO
-	_alvo.scale = _escala(_alvo, ESCALA_INICIAL)
+	_alvo.z_index = 1
+	_alvo.position = CENTRO_PLACA
+	_alvo.scale = _escala(_alvo, ESCALA_FINAL * 0.45)
+	_alvo.visible = false
 
 	_placa = _peca("placa")
 	_placa.scale = _escala(_placa, ESCALA_FINAL)
@@ -162,27 +166,28 @@ func _criar_faiscas() -> void:
 
 func _animar() -> void:
 	var tw := create_tween().set_parallel(true)
-	# 1. O alvo cresce com um tranco e "bate" (impacto em 0,65 s).
-	tw.tween_property(_alvo, "scale", _escala(_alvo, ESCALA_FINAL), 0.5)\
-		.set_delay(0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_alvo, "rotation", deg_to_rad(-8.0), 0.25).set_delay(0.15)
-	tw.tween_property(_alvo, "rotation", 0.0, 0.35).set_delay(0.4)\
-		.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(_impacto).set_delay(0.62)
-	# 2. A placa sobe.
+	# 1. A placa sobe primeiro.
 	tw.tween_property(_placa, "position:y", CENTRO_PLACA.y, 0.5)\
+		.set_delay(0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_placa, "modulate:a", 1.0, 0.3).set_delay(0.2)
+	# 2. O alvo sai de trás da placa. A posição não passa do ponto (senão a
+	#    base cortada apareceria); só o tamanho dá o tranco.
+	tw.tween_callback(func() -> void: _alvo.visible = true).set_delay(0.7)
+	tw.tween_property(_alvo, "position", CENTRO_ALVO, 0.45)\
+		.set_delay(0.7).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_alvo, "scale", _escala(_alvo, ESCALA_FINAL), 0.45)\
 		.set_delay(0.7).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_placa, "modulate:a", 1.0, 0.3).set_delay(0.7)
+	tw.tween_callback(_impacto).set_delay(1.15)
 	# 3. GAMES, letra por letra.
 	for i in _letras.size():
 		var l := _letras[i]
-		var atraso := 1.15 + i * 0.09
+		var atraso := 1.35 + i * 0.09
 		tw.tween_property(l, "modulate:a", 1.0, 0.12).set_delay(atraso)
 		tw.tween_property(l, "scale", Vector2.ONE, 0.35).set_delay(atraso)\
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# 4. Brilho passando pela placa.
 	tw.tween_property(_brilho, "position:x", _placa.texture.get_width() * 0.6, 0.7)\
-		.set_delay(1.75).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		.set_delay(1.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _impacto() -> void:

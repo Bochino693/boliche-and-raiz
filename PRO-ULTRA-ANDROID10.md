@@ -38,9 +38,17 @@ Não há tela de carregamento: a pista é carregada em segundo plano enquanto o 
 
 ### Abertura e imagem
 
-- Ao abrir o app aparece a abertura animada **Lazer & Sport GAMES** (alvo com impacto e faíscas, a placa sobe, "GAMES" letra por letra, brilho na placa). Enquanto ela roda, o menu carrega. Não há mais tela preta: a imagem de inicialização do Android já é o primeiro quadro da abertura.
-- O logo vem em versões de vários tamanhos (`sprites/marca/`, geradas por `tools/gerar_marca.py`). O jogo usa a versão certa para o tamanho real na tela, e todas as imagens usam mipmaps, então logos e pinos reduzidos não ficam serrilhados.
-- O brilho animado das canaletas roda na TV Box. As máscaras vêm prontas em `sprites/pista_mascara.png` (`tools/gerar_mascara_pista.py`).
+- Ao abrir o app aparece a abertura animada **Lazer & Sport GAMES**. A imagem de inicialização do Android é só o fundo escuro, igual ao primeiro quadro da abertura, então não há tela preta nem logo parado. O emblema só aparece na montagem: a placa sobe, o alvo sai de trás dela com impacto e faíscas, "GAMES" entra letra por letra e um brilho passa pela placa. Enquanto isso, o menu carrega.
+- O logo vem em versões de vários tamanhos (`sprites/marca/`, geradas por `tools/gerar_marca.py`), e todas as imagens usam mipmaps: logos e pinos reduzidos não ficam serrilhados.
+- O brilho animado das canaletas roda na TV Box (`sprites/pista_mascara.png`, `tools/gerar_mascara_pista.py`).
+
+### Jogada lisa, som junto
+
+- **Jogada guardada:** um sensor acionado enquanto a pista ainda não aceita jogada (pinos caindo, resultado, troca de rodada) não se perde mais. A jogada sai assim que a pista liberar, em até 10 s. Um segundo sensor acionado até 1,2 s depois de um lançamento é tratado como a mesma bola.
+- **Esperas menores entre jogadas:** depois de um strike, a pista ficava até 6 s sem aceitar a placa; agora são cerca de 4,7 s, com as animações rodando normalmente.
+- **Som junto com a bola:** o som do lançamento e o da bola rolando esperam o quadro em que a bola já foi desenhada, mais 60 ms (`GameConfig.atraso_som_jogada`). Antes o som saía antes da imagem.
+- A entrada da placa é processada o mais cedo possível em cada quadro (`input_devices/buffering/agile_event_flushing`).
+- O texto amarelo no alto da pista ("PREPARE-SE PARA JOGAR!" etc.) saiu, porque repetia o aviso central.
 
 No Android esta variante exporta usando o APK pronto do Godot, sem Gradle: a Zero Delay funciona via HID, mas LEDs conectados ao Arduino USB não funcionam neste APK. A saída COM4 para LED segue disponível nos testes no PC.
 

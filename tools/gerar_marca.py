@@ -17,16 +17,14 @@ Uso: python tools/gerar_marca.py
 """
 import os
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image
 
 RAIZ = os.path.join(os.path.dirname(__file__), "..")
 LOGO = os.path.join(RAIZ, "sprites", "logoofi.png")
 PASTA = os.path.join(RAIZ, "sprites", "marca")
 PERCENTUAIS = [25, 50, 100]
-# A abertura: placa com 820 px de largura na tela, alvo centrado em y=640,
-# começando com 35% do tamanho final (igual ao quadro inicial).
+# A abertura: placa com 820 px de largura na tela, alvo centrado em y=640.
 ESCALA_FINAL = 820.0 / 1280.0
-ESCALA_INICIAL = ESCALA_FINAL * 0.35
 CENTRO_ALVO = (492, 640)   # o alvo fica um pouco à esquerda do centro da placa, como no logo
 TELA = (1024, 1536)          # a tela do jogo, em pé
 HDMI = (1920, 1080)          # a saída da TV Box, deitada
@@ -57,20 +55,10 @@ for nome, im in pecas.items():
 
 
 def quadro_inicial():
-    """O primeiro quadro da abertura: fundo escuro e o alvo pequeno no
-    centro (a abertura começa daqui, sem pulo)."""
-    q = Image.new("RGBA", TELA, (6, 8, 22, 255))
-    brilho = Image.new("L", TELA, 0)
-    d = ImageDraw.Draw(brilho)
-    cx, cy = CENTRO_ALVO
-    d.ellipse((cx - 420, cy - 420, cx + 420, cy + 420), fill=70)
-    brilho = brilho.filter(ImageFilter.GaussianBlur(160))
-    roxo = Image.new("RGBA", TELA, (60, 30, 140, 255))
-    q = Image.composite(roxo, q, brilho)
-    alvo = pecas["alvo"]
-    alvo = alvo.resize((round(alvo.width * ESCALA_INICIAL), round(alvo.height * ESCALA_INICIAL)), Image.LANCZOS)
-    q.alpha_composite(alvo, (cx - alvo.width // 2, cy - alvo.height // 2))
-    return q.convert("RGB")
+    """O primeiro quadro da abertura: só o fundo escuro, na mesma cor que
+    a abertura desenha. O emblema aparece depois, na montagem animada
+    (nada de logo parado — e cortado — antes da hora)."""
+    return Image.new("RGB", TELA, (6, 8, 22))
 
 
 q = quadro_inicial()

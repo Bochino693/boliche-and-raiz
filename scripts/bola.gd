@@ -180,8 +180,16 @@ func _tocar_audio_roll_imediato() -> void:
 
 func _agendar_audio_roll_apos_lancamento() -> void:
 	token_audio_roll += 1
-	if usar_audio_roll_nesta_jogada:
-		_tocar_audio_roll_imediato()
+	if not usar_audio_roll_nesta_jogada:
+		return
+	var esta_jogada := token_audio_roll
+	# O rolar começa quando a bola já está na tela, não antes dela.
+	await RenderingServer.frame_post_draw
+	if GameConfig.atraso_som_jogada > 0.0:
+		await get_tree().create_timer(GameConfig.atraso_som_jogada).timeout
+	if esta_jogada != token_audio_roll or not is_inside_tree():
+		return
+	_tocar_audio_roll_imediato()
 
 
 func _fade_out_audio_roll(tempo_fade: float = 0.18) -> void:

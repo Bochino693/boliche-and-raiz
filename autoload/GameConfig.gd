@@ -7,6 +7,11 @@ var modo_livre: bool = true
 ## Ficam guardados aqui para não saírem do cache entre uma partida e outra.
 var precarregados: Dictionary = {}
 
+## SOM JUNTO COM A IMAGEM. O som sai na hora; a imagem da bola chega à
+## tela um ou dois quadros depois (e a TV ainda processa a imagem). O som
+## da jogada espera o quadro com a bola já desenhado e mais esta folga.
+var atraso_som_jogada: float = 0.06
+
 # ─────────────────────────────────────────────
 # CONFIGURAÇÃO GLOBAL DO JOGO
 # ─────────────────────────────────────────────

@@ -12,6 +12,48 @@ var precarregados: Dictionary = {}
 ## da jogada espera o quadro com a bola já desenhado e mais esta folga.
 var atraso_som_jogada: float = 0.06
 
+## FONTES SEM BUSCA NO SISTEMA. As fontes do jogo não têm 🎳 🏆 ★ ◆ ▼...
+## Sem reserva própria, o Godot ia procurar nas fontes do Android na hora
+## em que o texto aparecia (abrir a fonte de emoji inteira, vários MB) — a
+## tela travava no modal de jogadores e no placar. Estas duas fontinhas
+## (tools/gerar_fontes_simbolos.py) têm só o que os textos usam.
+const FONTES_DO_JOGO := [
+	"res://fonts/arcade_impact.ttf",
+	"res://fonts/painel_arcade.ttf",
+	"res://fonts/titan.ttf",
+]
+const FONTES_RESERVA := [
+	"res://fonts/simbolos_do_jogo.ttf",
+	"res://fonts/emoji_do_jogo.ttf",
+]
+var _fontes: Array[Font] = []
+
+
+func _ready() -> void:
+	_preparar_fontes()
+
+
+func _preparar_fontes() -> void:
+	var reservas: Array[Font] = []
+	for caminho: String in FONTES_RESERVA:
+		if ResourceLoader.exists(caminho):
+			var f := load(caminho) as FontFile
+			if f != null:
+				f.allow_system_fallback = false
+				reservas.append(f)
+	var todas: Array[Font] = [ThemeDB.fallback_font]
+	for caminho: String in FONTES_DO_JOGO:
+		if ResourceLoader.exists(caminho):
+			todas.append(load(caminho) as Font)
+	for f in todas:
+		if f == null:
+			continue
+		f.fallbacks = reservas
+		if f is FontFile:
+			(f as FontFile).allow_system_fallback = false
+		# Guardadas aqui: continuam as mesmas (com a reserva) no jogo todo.
+		_fontes.append(f)
+
 # ─────────────────────────────────────────────
 # CONFIGURAÇÃO GLOBAL DO JOGO
 # ─────────────────────────────────────────────

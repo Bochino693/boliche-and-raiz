@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b7fxu4nl4hu6s"
-path="res://.godot/imported/dragon_bow.png-37144b905ce08244add0adbec9f91d5d.ctex"
+path.s3tc="res://.godot/imported/dragon_bow.png-37144b905ce08244add0adbec9f91d5d.s3tc.ctex"
+path.etc2="res://.godot/imported/dragon_bow.png-37144b905ce08244add0adbec9f91d5d.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://sprites/dragon_bow.png"
-dest_files=["res://.godot/imported/dragon_bow.png-37144b905ce08244add0adbec9f91d5d.ctex"]
+dest_files=["res://.godot/imported/dragon_bow.png-37144b905ce08244add0adbec9f91d5d.s3tc.ctex", "res://.godot/imported/dragon_bow.png-37144b905ce08244add0adbec9f91d5d.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,6 +3,13 @@ extends Node
 ## Somente modo livre. Configuracoes antigas de credito sao ignoradas.
 var modo_livre: bool = true
 
+## Cena da pista, sons e fontes carregados em segundo plano pelo menu.
+## Ficam guardados aqui para não saírem do cache entre uma partida e outra.
+var precarregados: Dictionary = {}
+
+## O assistente de botões aparece sozinho só uma vez por inicialização.
+var assistente_de_botoes_ja_ofertado: bool = false
+
 # ─────────────────────────────────────────────
 # CONFIGURAÇÃO GLOBAL DO JOGO
 # ─────────────────────────────────────────────

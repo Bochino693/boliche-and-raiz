@@ -70,9 +70,19 @@ func _cobrir_se_raiz(no: Control) -> void:
 		cobrir(no)
 
 
+## NA TV BOX O JOGO DESENHA NO TAMANHO DELE (1536 x 1024) e a imagem
+## pronta é esticada para o HDMI. Desenhar direto na resolução da saída
+## (1080p, ou 4K na Pro Ultra) multiplicava os pixels de cada camada —
+## fundo, pista, brilho, painéis — e era isso que deixava o jogo lento.
+func _desenha_no_tamanho_do_jogo() -> bool:
+	if OS.has_environment("DRAGON_VIEWPORT"):
+		return OS.get_environment("DRAGON_VIEWPORT") == "1"
+	return OS.get_name() == "Android"
+
+
 func _aplicar() -> void:
 	var janela := get_tree().root
-	janela.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	janela.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT if _desenha_no_tamanho_do_jogo() else Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 	janela.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
 	if giro == 0:
 		janela.content_scale_size = Vector2i(TAMANHO)

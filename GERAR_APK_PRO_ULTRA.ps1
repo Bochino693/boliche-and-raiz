@@ -9,6 +9,9 @@ $Projeto = $PSScriptRoot
 $Saida = Join-Path $Projeto "build\android"
 $PastaApk = Join-Path $Projeto "APK-Pronto"
 $Apk = Join-Path $PastaApk "DragonBowling-Pro-Ultra-Android10.apk"
+# O Godot exporta aqui (junto com o .idsig da assinatura v4 e outros
+# arquivos auxiliares); para APK-Pronto vai SO o .apk.
+$ApkExportado = Join-Path $Saida "DragonBowling-Pro-Ultra-Android10.apk"
 $VersaoGodot = "4.6.1"
 $PastaTemplates = Join-Path $env:APPDATA "Godot\export_templates\4.6.1.stable"
 
@@ -163,8 +166,9 @@ $env:GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD = "android"
 Write-Host "[2/3] Preparando pasta de saida..."
 New-Item -ItemType Directory -Path $Saida -Force | Out-Null
 New-Item -ItemType Directory -Path $PastaApk -Force | Out-Null
-Get-ChildItem -LiteralPath $PastaApk -File | Where-Object { $_.Extension -ne ".apk" } | Remove-Item -Force
-if (Test-Path $Apk) { Remove-Item -LiteralPath $Apk -Force }
+# APK-Pronto fica vazia antes de cada geracao: no fim ela tem so o APK.
+Get-ChildItem -LiteralPath $PastaApk -Force | Remove-Item -Recurse -Force
+Get-ChildItem -LiteralPath $Saida -File -Filter "*.apk*" -ErrorAction SilentlyContinue | Remove-Item -Force
 
 Write-Host "[3/3] Exportando APK Android para a Pro Ultra 4K..."
 # Segue o fluxo que funciona no GERAR_APK_TX9.ps1 do projeto boliche-android.
@@ -176,7 +180,7 @@ $ErrosLog = Join-Path $Saida "exportacao-godot-erros.log"
 if (Test-Path $Log) { Remove-Item -LiteralPath $Log -Force }
 if (Test-Path $ErrosLog) { Remove-Item -LiteralPath $ErrosLog -Force }
 
-$Argumentos = "--headless --path `"$Projeto`" --export-release `"Pro Ultra 4K Android 10`" `"$Apk`""
+$Argumentos = "--headless --path `"$Projeto`" --export-release `"Pro Ultra 4K Android 10`" `"$ApkExportado`""
 $Processo = Start-Process -FilePath $Godot.FullName -ArgumentList $Argumentos -NoNewWindow -Wait -PassThru -RedirectStandardOutput $Log -RedirectStandardError $ErrosLog
 
 if (Test-Path $Log) { Get-Content -LiteralPath $Log }
@@ -189,9 +193,12 @@ if ($TextoLog -match "SCRIPT ERROR: Parse Error|Failed to load script|Failed to 
     throw "Existe erro de sintaxe em um script Godot. Consulte build\android\exportacao-godot.log."
 }
 if ($Processo.ExitCode -ne 0) { throw "Falha na exportacao Android; consulte $Log e $ErrosLog. Codigo: $($Processo.ExitCode)" }
-if (-not (Test-Path $Apk)) {
+if (-not (Test-Path $ApkExportado)) {
     throw "O APK nao foi criado. Consulte build\android\exportacao-godot.log. Codigo do Godot: $($Processo.ExitCode)"
 }
+Copy-Item -LiteralPath $ApkExportado -Destination $Apk -Force
+# Garante: nada alem do APK na pasta de entrega.
+Get-ChildItem -LiteralPath $PastaApk -Force | Where-Object { $_.FullName -ne (Get-Item $Apk).FullName } | Remove-Item -Recurse -Force
 $Tamanho = (Get-Item $Apk).Length
 if ($Tamanho -lt 1MB) { throw "O APK foi criado incompleto (menos de 1 MB)." }
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1dx551r4tb6d"
-path="res://.godot/imported/logoofi.png-529026decb2834cda92d127058707fcd.ctex"
+uid="uid://dy1npneeambbk"
+path="res://.godot/imported/placa_25.png-954a0cc278336001b5dfd9ed37382756.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/logoofi.png"
-dest_files=["res://.godot/imported/logoofi.png-529026decb2834cda92d127058707fcd.ctex"]
+source_file="res://sprites/marca/placa_25.png"
+dest_files=["res://.godot/imported/placa_25.png-954a0cc278336001b5dfd9ed37382756.ctex"]
 
 [params]
 

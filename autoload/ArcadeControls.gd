@@ -2,31 +2,35 @@ extends Node
 
 ## OS COMANDOS DO JOGO VÊM DA PLACA ZERO DELAY.
 ##
-## Sem mapeamento gravado, valem os botões de joystick do Input Map do
-## projeto. Teclado e controle remoto não fazem nada; as ações "ui_*" do
-## Godot (ENTER, espaço, botão 0 de qualquer joystick) são desligadas.
+## Sem mapeamento gravado, vale o Input Map do projeto: as teclas da Zero
+## Delay no modo teclado (1/Espaço = STR, A = quadrado, S = X, D = bolinha,
+## F = triângulo, G = R1, 5 = SELECT, 9 = L3) e os índices de joystick.
+## As ações "ui_*" do Godot (ENTER, setas, botão 0) são desligadas.
 ##
 ## MAPEAMENTO GRAVADO NA TV BOX. O Android numera os botões da placa de
 ## outro jeito que o Windows. Na tela de CONFIGURAÇÃO (L3, ou segurar
 ## qualquer botão da placa por 5 segundos no menu) o jogo pede um botão
 ## de cada vez, na sequência, e grava em user://controles_zero_delay.cfg.
 ## A placa vale do jeito que ela se apresentar ao Android: como joystick
-## (botão) ou, em placas genéricas no modo teclado, como tecla. Só as
-## teclas aprendidas ali contam; nenhuma outra tecla faz nada.
+## (botão) ou, no modo teclado, como tecla. Só teclas ligadas a uma ação
+## do jogo contam; nenhuma outra tecla faz nada.
 
 const ARQUIVO := "user://controles_zero_delay.cfg"
 
 ## A sequência do assistente: ação, nome na tela.
 const SEQUENCIA: Array = [
-	["input_start", "START"],
-	["input_z", "JOGADA Z  ·  QUADRADO"],
-	["input_x", "JOGADA X  ·  X"],
-	["input_c", "JOGADA C  ·  BOLINHA"],
-	["input_v", "JOGADA V  ·  TRIÂNGULO"],
-	["input_b", "JOGADA B  ·  R1"],
+	["input_start", "STR  ·  START"],
+	["input_z", "QUADRADO  ·  JOGADA ESQUERDA"],
+	["input_x", "X  ·  MEIO ESQUERDO"],
+	["input_c", "BOLINHA  ·  STRIKE (CENTRO)"],
+	["input_v", "TRIÂNGULO  ·  MEIO DIREITO"],
+	["input_b", "R1  ·  JOGADAS EXTREMAS"],
 	["input_credit", "SELECT  ·  CRÉDITO"],
 	["input_teste", "L3  ·  CONFIGURAÇÃO"],
 ]
+## Os primeiros são obrigatórios; SELECT e L3 podem ser pulados (a
+## máquina pode não ter esses botões ligados).
+const OBRIGATORIOS := 6
 
 const JOGADAS := {
 	"input_z": "Z",
@@ -43,8 +47,6 @@ const CENA_CONFIGURACAO := "res://scene/configuracao_tvbox.tscn"
 const CENA_MENU := "res://scene/Main Menu.tscn"
 
 var mapeamento_gravado := false
-## Teclas que o assistente aprendeu como botões da placa.
-var _teclas_da_placa := {}
 var _segurado_desde := {}
 
 
@@ -88,7 +90,6 @@ func gravar(botoes: Dictionary) -> void:
 
 
 func _aplicar(botoes: Dictionary) -> void:
-	_teclas_da_placa.clear()
 	for acao: String in botoes:
 		var codigo = botoes[acao]
 		if not InputMap.has_action(acao):
@@ -100,7 +101,6 @@ func _aplicar(botoes: Dictionary) -> void:
 			var ev := InputEventKey.new()
 			ev.physical_keycode = tecla as Key
 			InputMap.action_add_event(acao, ev)
-			_teclas_da_placa[tecla] = true
 		else:
 			var ev := InputEventJoypadButton.new()
 			ev.device = -1
@@ -128,25 +128,34 @@ static func texto_do_codigo(codigo: String) -> String:
 
 
 func texto_de(acao: String) -> String:
+	var partes: PackedStringArray = []
 	for ev in InputMap.action_get_events(acao):
 		if ev is InputEventJoypadButton:
-			return "BOTÃO %d" % int(ev.button_index)
-		if ev is InputEventKey:
-			return "TECLA %s" % OS.get_keycode_string(ev.physical_keycode)
-	return "-"
+			partes.append("BOTÃO %d" % int(ev.button_index))
+		elif ev is InputEventKey:
+			partes.append("TECLA %s" % OS.get_keycode_string(ev.physical_keycode))
+	return " / ".join(partes) if not partes.is_empty() else "-"
 
 
-## É um botão da placa? Joystick sempre; tecla só se o assistente aprendeu.
+## É um botão da placa? A Zero Delay chega como joystick OU, no modo
+## teclado, como teclas (1 = STR, A S D F G = jogadas, 5, 9...). Tecla só
+## vale se estiver ligada a uma ação do jogo: as do controle remoto (setas,
+## OK, voltar) não estão, então não fazem nada.
 func eh_da_placa(event: InputEvent) -> bool:
 	if event.is_echo():
 		return false
-	if event is InputEventJoypadButton:
-		return true
-	if event is InputEventKey and not _teclas_da_placa.is_empty():
-		var k := event as InputEventKey
-		var fisica := int(k.physical_keycode) if k.physical_keycode != KEY_NONE else int(k.keycode)
-		return _teclas_da_placa.has(fisica)
-	return false
+	return event is InputEventJoypadButton or event is InputEventKey
+
+
+## A tecla/botão apertado não faz nada no jogo (serve para avisar o
+## operador de que a configuração precisa ser feita).
+func sem_funcao(event: InputEvent) -> bool:
+	if not eh_da_placa(event) or not event.is_pressed():
+		return false
+	for item: Array in SEQUENCIA:
+		if event.is_action(item[0]):
+			return false
+	return true
 
 
 func eh_start(event: InputEvent) -> bool:

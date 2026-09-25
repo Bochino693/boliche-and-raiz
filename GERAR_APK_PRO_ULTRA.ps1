@@ -31,10 +31,14 @@ $PresetTexto = [Regex]::Replace($PresetTexto, '(?m)^gradle_build/target_sdk=.*$'
 $PresetTexto = [Regex]::Replace($PresetTexto, '(?m)^package/show_in_android_tv=.*$', 'package/show_in_android_tv=false')
 [IO.File]::WriteAllText($PresetAndroid, $PresetTexto, [Text.UTF8Encoding]::new($false))
 $Config = [IO.File]::ReadAllText($ProjectGodot)
-$Config = $Config.Replace('run/main_scene="uid://cwtn6ci5owcr3"', 'run/main_scene="res://scene/Main Menu.tscn"')
+$Config = $Config.Replace('run/main_scene="uid://cwtn6ci5owcr3"', 'run/main_scene="res://scene/abertura.tscn"')
 $Config = $Config.Replace('MusicManager="*uid://c0b1vqmvmj8ge"', 'MusicManager="*res://scripts/music_manager.gd"')
 $Config = $Config.Replace('GameConfig="*uid://cwyqpsh7281gh"', 'GameConfig="*res://autoload/GameConfig.gd"')
 $Config = [Regex]::Replace($Config, '(?m)^tela/giro=.*$', "tela/giro=$Giro")
+# A imagem de inicializacao (antes da abertura) gira junto com a tela.
+$Splash = @{ 1 = "splash_giro_1.png"; -1 = "splash_giro_m1.png"; 0 = "splash_giro_0.png" }[$Giro]
+$Config = [Regex]::Replace($Config, '(?m)^boot_splash/image=.*$', "boot_splash/image=`"res://sprites/marca/$Splash`"")
+$Config = $Config.Replace('run/main_scene="res://scene/Main Menu.tscn"', 'run/main_scene="res://scene/abertura.tscn"')
 [IO.File]::WriteAllText($ProjectGodot, $Config, [Text.UTF8Encoding]::new($false))
 Write-Host "Giro da tela: $Giro"
 

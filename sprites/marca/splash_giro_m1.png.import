@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1dx551r4tb6d"
-path="res://.godot/imported/logoofi.png-529026decb2834cda92d127058707fcd.ctex"
+uid="uid://cphx82hb3epwf"
+path="res://.godot/imported/splash_giro_m1.png-17c88cbf8a718778689e815589a0e673.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/logoofi.png"
-dest_files=["res://.godot/imported/logoofi.png-529026decb2834cda92d127058707fcd.ctex"]
+source_file="res://sprites/marca/splash_giro_m1.png"
+dest_files=["res://.godot/imported/splash_giro_m1.png-17c88cbf8a718778689e815589a0e673.ctex"]
 
 [params]
 

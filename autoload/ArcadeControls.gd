@@ -42,12 +42,20 @@ const JOGADAS := {
 
 ## Segurar qualquer botão da placa por este tempo no menu abre a
 ## configuração — a saída de emergência se o mapeamento estiver errado.
-const SEGURAR_PARA_CONFIGURAR_MS := 5000
+## Longo de propósito: segurar um botão não pode disparar nada por acaso.
+const SEGURAR_PARA_CONFIGURAR_MS := 10000
 const CENA_CONFIGURACAO := "res://scene/configuracao_tvbox.tscn"
 const CENA_MENU := "res://scene/Main Menu.tscn"
 
 var mapeamento_gravado := false
 var _segurado_desde := {}
+
+## Proteção de clique (ver eh_da_placa).
+const INTERVALO_MINIMO_MS := 120
+var _abaixados := {}
+var _ultimo_clique := {}
+var _evento_visto: InputEvent = null
+var _veredito_visto := false
 
 
 func _ready() -> void:
@@ -141,10 +149,36 @@ func texto_de(acao: String) -> String:
 ## teclado, como teclas (1 = STR, A S D F G = jogadas, 5, 9...). Tecla só
 ## vale se estiver ligada a uma ação do jogo: as do controle remoto (setas,
 ## OK, voltar) não estão, então não fazem nada.
+##
+## CADA APERTO É UM CLIQUE. Um botão só vale de novo depois de ser SOLTO:
+## segurar o START (ou qualquer botão/sensor) não repete o comando — nem a
+## repetição automática do teclado, nem uma placa que reenvia o "apertado"
+## sem soltar. Um repique do contato (apertar de novo em menos de
+## INTERVALO_MINIMO_MS) também não conta.
 func eh_da_placa(event: InputEvent) -> bool:
 	if event.is_echo():
 		return false
-	return event is InputEventJoypadButton or event is InputEventKey
+	if not (event is InputEventJoypadButton or event is InputEventKey):
+		return false
+	# O mesmo evento passa por vários nós (menu, jogo, este): decide uma vez.
+	if event == _evento_visto:
+		return _veredito_visto
+	var codigo := codigo_do_evento(event)
+	var valido := true
+	if event.is_pressed():
+		var agora := Time.get_ticks_msec()
+		if _abaixados.has(codigo):
+			valido = false   # ainda segurado: não é um clique novo
+		elif agora - int(_ultimo_clique.get(codigo, -100000)) < INTERVALO_MINIMO_MS:
+			valido = false   # repique do contato
+		_abaixados[codigo] = true
+		if valido:
+			_ultimo_clique[codigo] = agora
+	else:
+		_abaixados.erase(codigo)
+	_evento_visto = event
+	_veredito_visto = valido
+	return valido
 
 
 ## A tecla/botão apertado não faz nada no jogo (serve para avisar o
@@ -186,12 +220,16 @@ func eh_atividade(event: InputEvent) -> bool:
 
 # ----------------------------------------------------- saída de emergência
 ## Segurar um botão da placa (ou, se a placa estiver no modo teclado, uma
-## tecla dela) por 5 s no menu abre a configuração.
+## tecla dela) por 10 s no menu abre a configuração.
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventJoypadButton or event is InputEventKey):
 		return
 	if event.is_echo():
 		return
+	# Registra aperto/soltura de todo botão, mesmo quando a cena atual não
+	# pergunta nada (abertura, transição): senão um botão solto nessa hora
+	# ficaria "segurado" e o próximo clique dele seria ignorado.
+	eh_da_placa(event)
 	var chave := codigo_do_evento(event)
 	if chave == "":
 		return

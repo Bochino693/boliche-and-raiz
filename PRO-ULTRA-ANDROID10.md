@@ -21,7 +21,7 @@ Se na máquina algum botão cair na função errada, refaça pela tela de config
 
 ### Configurar os botões (rápido)
 
-1. No menu, **segure qualquer botão da placa por 5 segundos** (ou aperte L3). Abre **CONFIGURAR BOTÕES DA PLACA**.
+1. No menu, **segure qualquer botão da placa por 10 segundos** (ou aperte L3). Abre **CONFIGURAR BOTÕES DA PLACA**.
 2. Aperte, na ordem: **STR, Quadrado, X, Bolinha, Triângulo, R1**.
 3. SELECT e L3 são opcionais: aperte ou aguarde 4 segundos para pular.
 4. Aparece **PRONTO!** e o jogo volta ao menu. O mapeamento fica gravado na TV Box.
@@ -49,6 +49,11 @@ Não há tela de carregamento: a pista é carregada em segundo plano enquanto o 
 - **Som junto com a bola:** o som do lançamento e o da bola rolando esperam o quadro em que a bola já foi desenhada, mais 60 ms (`GameConfig.atraso_som_jogada`). Antes o som saía antes da imagem.
 - A entrada da placa é processada o mais cedo possível em cada quadro (`input_devices/buffering/agile_event_flushing`).
 - O texto amarelo no alto da pista ("PREPARE-SE PARA JOGAR!" etc.) saiu, porque repetia o aviso central.
+
+### Clique e strike
+
+- **Cada aperto é um clique:** um botão (START, jogadas, qualquer um) só vale de novo depois de ser solto. Segurar não repete o comando, nem pela repetição automática do teclado nem por uma placa que reenvia "apertado" sem soltar. Um repique do contato em menos de 120 ms também não conta.
+- **Strike com pancada:** a bola não para mais no pino 1 (antes ficava parada enquanto os pinos voavam, e parecia bater e voltar). Ela atravessa o rack na hora, e o contato dá um tranco na câmera (tremida curta e forte com soco de zoom), maior no strike.
 
 ### Leve na TV Box (sem travar)
 

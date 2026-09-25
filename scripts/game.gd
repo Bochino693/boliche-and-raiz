@@ -4815,6 +4815,19 @@ func _on_bola_impacto_no_deck(dados: Dictionary) -> void:
 
 	efeito_impacto_deck(ponto_contato_real, clamp(forca, 0.96, 1.22))
 
+	# A BOLA NÃO PARA NO PINO. Antes ela ficava parada no ponto do impacto
+	# enquanto a queda dos pinos era calculada e só depois seguia — parecia
+	# que batia, voltava e depois ia. Agora ela atravessa na hora, junto
+	# com a pancada; o fim da passagem é tratado em _on_bola_jogada_finalizada.
+	var bola_seguindo := false
+	if bola != null and bola.has_method("tocar_passagem_por_cima_dos_pinos"):
+		bola_seguindo = true
+		bola.tocar_passagem_por_cima_dos_pinos(
+			ponto_contato_real,
+			principal.z_index,
+			clamp(forca, 0.98, 1.20)
+		)
+
 	if principal.has_method("destacar_acerto"):
 		principal.destacar_acerto()
 
@@ -4839,7 +4852,7 @@ func _on_bola_impacto_no_deck(dados: Dictionary) -> void:
 	if ultima_tecla_jogada == "C":
 		_aplicar_quase_queda_ao_redor(principal, -1, ponto_contato_real)
 
-	if bola != null and bola.has_method("tocar_passagem_por_cima_dos_pinos"):
+	if not bola_seguindo and bola != null and bola.has_method("tocar_passagem_por_cima_dos_pinos"):
 		await bola.tocar_passagem_por_cima_dos_pinos(
 			ponto_contato_real,
 			principal.z_index,
@@ -5529,10 +5542,22 @@ func _shake_camera_async(forca: float = 5.0, duracao: float = 0.15, passos: int 
 	camera_jogo.offset = camera_base_offset
 
 
+## A PANCADA DO CONTATO: tranco curto na câmera (tremida forte e rápida e
+## um soco de zoom) no instante em que a bola chega nos pinos. Na bola no
+## centro com o rack cheio (o strike), o tranco é maior. Sem flash na tela
+## (o flash antigo deixava névoa no ponto de contato).
 func efeito_impacto_deck(pos: Vector2, intensidade: float = 1.0) -> void:
-	# Removido: o flash amarelado estava criando névoa no ponto de contato.
-	# O impacto visual agora fica por conta da bola e dos pinos.
-	pass
+	var cheio: bool = tentativa_atual == 1 and contar_pinos_em_pe() == 10
+	var forte: bool = ultima_tecla_jogada == "C" and cheio
+	shake_camera((8.5 if forte else 5.0) * intensidade, 0.10 if forte else 0.08, 7 if forte else 5)
+	if camera_jogo == null:
+		return
+	var base: Vector2 = camera_zoom_idle
+	var tw := create_tween()
+	tw.tween_property(camera_jogo, "zoom", base * (1.045 if forte else 1.025), 0.05)\
+		.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.tween_property(camera_jogo, "zoom", base, 0.22)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 func _configurar_audio_menu_final() -> void:

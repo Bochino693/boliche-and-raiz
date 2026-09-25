@@ -756,6 +756,37 @@ func _unhandled_input(event: InputEvent) -> void:
 		_registrar_pulso_start()
 		return
 
+	if ArcadeControls.sem_funcao(event):
+		_mostrar_aviso_sem_funcao(event)
+
+
+## Um botão da placa que não faz nada: avisa na tela qual foi e como
+## configurar — o operador não fica apertando no escuro.
+var _aviso_sem_funcao: Label = null
+var _tween_aviso: Tween = null
+
+func _mostrar_aviso_sem_funcao(event: InputEvent) -> void:
+	if _aviso_sem_funcao == null:
+		var camada := CanvasLayer.new()
+		camada.layer = 900
+		add_child(camada)
+		_aviso_sem_funcao = Label.new()
+		_aviso_sem_funcao.position = Vector2(40, Tela.TAMANHO.y - 260)
+		_aviso_sem_funcao.size = Vector2(Tela.TAMANHO.x - 80, 120)
+		_aviso_sem_funcao.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_aviso_sem_funcao.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_aviso_sem_funcao.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_aplicar_fonte_modal(_aviso_sem_funcao, 30, Color(1.0, 0.86, 0.2), 8)
+		camada.add_child(_aviso_sem_funcao)
+	var codigo := ArcadeControls.codigo_do_evento(event)
+	_aviso_sem_funcao.text = "%s SEM FUNÇÃO\nSEGURE QUALQUER BOTÃO DA PLACA 5 s PARA CONFIGURAR" % ArcadeControls.texto_do_codigo(codigo)
+	_aviso_sem_funcao.modulate.a = 1.0
+	if _tween_aviso != null:
+		_tween_aviso.kill()
+	_tween_aviso = create_tween()
+	_tween_aviso.tween_interval(3.0)
+	_tween_aviso.tween_property(_aviso_sem_funcao, "modulate:a", 0.0, 0.5)
+
 
 
 

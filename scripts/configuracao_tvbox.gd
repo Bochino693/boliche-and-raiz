@@ -12,6 +12,8 @@ extends Control
 const MENU := "res://scene/Main Menu.tscn"
 const FONTE := "res://fonts/painel_arcade.ttf"
 const ESPERA_MAXIMA_MS := 20000
+## Depois dos botões obrigatórios, SELECT e L3 são pulados sozinhos.
+const PULAR_OPCIONAL_MS := 4000
 
 var _passo := 0
 var _botoes := {}
@@ -71,7 +73,10 @@ func _rotulo(fonte: Font, texto: String, pos: Vector2, tamanho: int, cor: Color)
 func _atualizar() -> void:
 	var total := ArcadeControls.SEQUENCIA.size()
 	if _passo < total:
-		_pedido.text = str(ArcadeControls.SEQUENCIA[_passo][1])
+		_pedido.text = str(ArcadeControls.SEQUENCIA[_passo][1]).get_slice("  ·  ", 0)
+		if _passo >= ArcadeControls.OBRIGATORIOS:
+			var falta: int = max(0, int(ceil((PULAR_OPCIONAL_MS - (Time.get_ticks_msec() - _ultimo_toque_ms)) / 1000.0)))
+			_dica.text = "APERTE, OU AGUARDE %d s PARA PULAR" % falta
 	for i in total:
 		var acao: String = ArcadeControls.SEQUENCIA[i][0]
 		var nome: String = ArcadeControls.SEQUENCIA[i][1]
@@ -92,6 +97,10 @@ func _atualizar() -> void:
 func _process(_delta: float) -> void:
 	if _terminado:
 		return
+	if _passo >= ArcadeControls.OBRIGATORIOS and _segurando == "" \
+			and Time.get_ticks_msec() - _ultimo_toque_ms > PULAR_OPCIONAL_MS:
+		_concluir()
+		return
 	if Time.get_ticks_msec() - _ultimo_toque_ms > ESPERA_MAXIMA_MS:
 		_terminado = true
 		get_tree().change_scene_to_file.call_deferred(MENU)
@@ -111,7 +120,7 @@ func _input(event: InputEvent) -> void:
 			_segurando = ""
 		return
 	_ultimo_toque_ms = Time.get_ticks_msec()
-	var aparelho := Input.get_joy_name(event.device) if event is InputEventJoypadButton else "teclado/controle"
+	var aparelho := Input.get_joy_name(event.device) if event is InputEventJoypadButton else "placa no modo teclado"
 	_sinal.text = "SINAL RECEBIDO: %s  ·  %s" % [ArcadeControls.texto_do_codigo(codigo), aparelho]
 	if _segurando != "":
 		return

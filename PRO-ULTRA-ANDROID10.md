@@ -4,28 +4,31 @@ Esta variante parte do projeto atualizado `boliche-and-raiz`. Preserva as cenas,
 
 ## Zero Delay
 
-| Função | Ação Godot | Índice do botão USB |
-| --- | --- | ---: |
-| Jogada Z | `input_z` | 2 |
-| Jogada X | `input_x` | 0 |
-| Jogada C | `input_c` | 1 |
-| Jogada V | `input_v` | 3 |
-| Jogada B, R1 | `input_b` | 5 |
-| START | `input_start` | 6 |
-| SELECT | `input_credit` | 7 |
-| L3, configurações | `input_teste` | 8 |
+A placa desta máquina está no **modo teclado**: cada botão manda uma tecla (Espaço, setas, A, S, D, F, 1, 5, G, C, V, X, 9). O jogo já vem ligado assim:
 
-### Botões: só a placa Zero Delay
+| Botão da placa | Função no jogo | Tecla | Índice joystick |
+| --- | --- | :---: | ---: |
+| STR | START | 1 ou Espaço | 6 |
+| Quadrado | jogada esquerda (Z) | A | 2 |
+| X | meio esquerdo (X) | S | 0 |
+| Bolinha | strike, centro (C) | D | 1 |
+| Triângulo | meio direito (V) | F | 3 |
+| R1 | jogadas extremas (B) | G | 5 |
+| SELECT | crédito | 5 | 7 |
+| L3 | configuração | 9 | 8 |
 
-Os comandos do jogo vêm **somente** da placa Zero Delay. Teclado, controle remoto da TV Box (OK, MENU, VOLTAR) e as ações `ui_*` do Godot não fazem nada, e o VOLTAR do remoto não fecha mais o jogo.
+Se na máquina algum botão cair na função errada, refaça pela tela de configuração (abaixo). Leva uns 10 segundos.
 
-O Android numera os botões da placa de outro jeito que o Windows. Para acertar a ordem na TV Box:
+### Configurar os botões (rápido)
 
-1. No menu, **segure qualquer botão da placa por 5 segundos** (ou aperte L3). Abre a tela **CONFIGURAR BOTÕES DA PLACA**.
-2. Aperte, na ordem pedida: START, Z (quadrado), X, C (bolinha), V (triângulo), B (R1), SELECT e L3.
-3. A linha **SINAL RECEBIDO** mostra na hora o que a placa enviou (botão ou tecla), o que serve de diagnóstico. Um botão já usado é recusado. No fim aparece **PRONTO!** e o mapeamento fica gravado na TV Box.
+1. No menu, **segure qualquer botão da placa por 5 segundos** (ou aperte L3). Abre **CONFIGURAR BOTÕES DA PLACA**.
+2. Aperte, na ordem: **STR, Quadrado, X, Bolinha, Triângulo, R1**.
+3. SELECT e L3 são opcionais: aperte ou aguarde 4 segundos para pular.
+4. Aparece **PRONTO!** e o jogo volta ao menu. O mapeamento fica gravado na TV Box.
 
-A placa é aceita do jeito que o Android a entregar: como botão de joystick ou, nas placas genéricas que se apresentam como teclado, como tecla. Só as teclas aprendidas nessa tela contam. Se ninguém apertar nada por 20 segundos, a tela volta ao menu sem alterar nada. Sem mapeamento gravado, valem os índices do Input Map da tabela acima.
+A linha **SINAL RECEBIDO** mostra na hora o que a placa enviou (tecla ou botão). No menu, um botão sem função mostra um aviso com o nome da tecla e como configurar.
+
+Só as teclas ligadas a uma função do jogo fazem alguma coisa. Setas, OK e as teclas do controle remoto não fazem nada no jogo. O **VOLTAR do controle remoto fecha o app**, como antes.
 
 ### Partida
 
@@ -33,11 +36,11 @@ O jogo funciona em modo livre. START abre a escolha de um ou dois jogadores. Sem
 
 Não há tela de carregamento: a pista é carregada em segundo plano enquanto o menu está na tela. No START, a última imagem do menu se desfaz por cima enquanto a pista monta (painéis e pinos entrando). Nenhuma tela cinza aparece entre as telas.
 
-### Desempenho na TV Box
+### Abertura e imagem
 
-- A resolução de desenho é a original (nítida na saída HDMI).
-- O brilho animado das canaletas voltou na TV Box. As máscaras vêm prontas em `sprites/pista_mascara.png` (gerada por `tools/gerar_mascara_pista.py`); cerca de 80% da tela não tem brilho e pula a conta. O shader é compilado ainda no menu.
-- As animações de montagem da pista rodam na velocidade normal.
+- Ao abrir o app aparece a abertura animada **Lazer & Sport GAMES** (alvo com impacto e faíscas, a placa sobe, "GAMES" letra por letra, brilho na placa). Enquanto ela roda, o menu carrega. Não há mais tela preta: a imagem de inicialização do Android já é o primeiro quadro da abertura.
+- O logo vem em versões de vários tamanhos (`sprites/marca/`, geradas por `tools/gerar_marca.py`). O jogo usa a versão certa para o tamanho real na tela, e todas as imagens usam mipmaps, então logos e pinos reduzidos não ficam serrilhados.
+- O brilho animado das canaletas roda na TV Box. As máscaras vêm prontas em `sprites/pista_mascara.png` (`tools/gerar_mascara_pista.py`).
 
 No Android esta variante exporta usando o APK pronto do Godot, sem Gradle: a Zero Delay funciona via HID, mas LEDs conectados ao Arduino USB não funcionam neste APK. A saída COM4 para LED segue disponível nos testes no PC.
 

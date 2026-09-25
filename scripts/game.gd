@@ -114,6 +114,9 @@ func _enviar_led(evento: String) -> void:
 			pass
 		_:
 			return
+	if OS.get_name() == "Android":
+		ArduinoBridge.send_led(evento)
+		return
 
 	var ps := "$p=New-Object System.IO.Ports.SerialPort('%s',9600,'None',8,1);" % LED_COM
 	ps += "$p.DtrEnable=$false;$p.RtsEnable=$false;"
@@ -261,7 +264,7 @@ var tempo_hud_acc: float = 0.0
 var hud_sujo: bool = true
 var hover_sujo: bool = true
 
-const CENA_TESTE: String = "res://scenes/teste.tscn"
+const CENA_TESTE: String = "res://scene/configuracao_tvbox.tscn"
 
 var audio_menu_final_player: AudioStreamPlayer = null
 var musica_menu_final: AudioStream = null
@@ -564,6 +567,10 @@ func _ready() -> void:
 
 
 func _configurar_shader_brilho_fundo() -> void:
+	# Shader temporal em tela inteira custa muito no buffer HDMI da TV Box.
+	# Efeitos de pinos, bola, HUD e resultado continuam ativos.
+	if OS.get_name() == "Android":
+		return
 	if not animar_brilhos_fundo:
 		return
 	if fundo_fullscreen == null or not is_instance_valid(fundo_fullscreen):
@@ -771,7 +778,7 @@ func ajustar_fundo_fullscreen() -> void:
 	if fundo_fullscreen.texture == null:
 		return
 
-	var tela: Vector2 = get_viewport_rect().size
+	var tela: Vector2 = Tela.retangulo().size
 	var tex: Vector2 = fundo_fullscreen.texture.get_size()
 
 	if tela.x <= 0.0 or tela.y <= 0.0:
@@ -793,7 +800,7 @@ func centralizar_tela_final() -> void:
 	if final_panel == null:
 		return
 
-	var tela := get_viewport_rect().size
+	var tela := Tela.retangulo().size
 
 	final_panel.position = Vector2(
 		(tela.x - final_panel.size.x) * 0.5,
@@ -968,7 +975,7 @@ func efeito_miss_total() -> void:
 	
 	var flash: ColorRect = ColorRect.new()
 	flash.color = Color(1.0, 0.20, 0.18, 0.0)
-	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(flash)
 	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var layer: CanvasLayer = CanvasLayer.new()
@@ -1886,7 +1893,7 @@ func criar_tela_final() -> void:
 	add_child(overlay_final)
 
 	final_bg = ColorRect.new()
-	final_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(final_bg)
 	final_bg.color = Color(0, 0, 0, 0.0)
 	overlay_final.add_child(final_bg)
 
@@ -2157,6 +2164,8 @@ func animar_intro_partida() -> void:
 
 	var tw: Tween = create_tween()
 	tw.set_parallel(true)
+	if OS.get_name() == "Android":
+		tw.set_speed_scale(3.0)
 	
 	if hud_fundo_moderno != null:
 		tw.tween_property(hud_fundo_moderno, "position", Vector2(28, 4), 0.78)\
@@ -2223,9 +2232,22 @@ func animar_intro_partida() -> void:
 #		tw_mapa_label.tween_property(mapa_label, "modulate:a", 1.0, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 #		await tw_mapa_label.finished
 
-	await animar_pinos_em_cascata()
-	await animar_bola_entrada()
-	await mostrar_round_banner_intro(1)
+	if OS.get_name() == "Android":
+		# A introdução no Android não mantém o controle bloqueado pelo banner.
+		for p in pins:
+			if p == null:
+				continue
+			if p.has_meta("intro_base_pos"):
+				p.position = p.get_meta("intro_base_pos")
+			p.modulate.a = 1.0
+		if bola != null:
+			if bola.has_meta("intro_base_pos"):
+				bola.position = bola.get_meta("intro_base_pos")
+			bola.modulate.a = 1.0
+	else:
+		await animar_pinos_em_cascata()
+		await animar_bola_entrada()
+		await mostrar_round_banner_intro(1)
 
 	intro_em_andamento = false
 	aceitando_input = true
@@ -2608,7 +2630,7 @@ func organizar_pinos() -> void:
 		return
 
 	var centro_x: float = 512.0
-	var base_y: float = 802.0
+	var base_y: float = 755.0
 
 	var espacamento_x: float = 74.0
 	var espacamento_y: float = 63.0
@@ -3044,42 +3066,13 @@ func _forcar_fundo_xv_agora(ponto_impacto: Vector2) -> void:
 
 
 func _forcar_strike_central_se_preciso(ponto_contato_real: Vector2) -> void:
-	if ultima_tecla_jogada != "C":
+	# Bolinha no rack completo: strike garantido, independentemente da
+	# posicao visual da bola ou da ordem das animacoes de impacto.
+	if ultima_tecla_jogada != "C" or tentativa_atual != 1 or pinos_antes_da_jogada != 10:
 		return
 
-	var em_pe_antes: int = contar_pinos_em_pe()
-	if em_pe_antes < 8:
-		return
-
-	if not decidir_strike_assist():
-		return
-
-	# 80% de chance de NÃO ser strike perfeito
-	var chance_strike_perfeito: float = 0.20
-	var vai_deixar_pinos: bool = randf() > chance_strike_perfeito
-
-	var pinos_para_sobrar: int = 0
-	if vai_deixar_pinos:
-		pinos_para_sobrar = randi_range(1, 3)
-
-	var candidatos_sobreviventes: Array[int] = [7, 10, 8, 9, 4, 6]
 	var sobreviventes_escolhidos: Array[int] = []
-
-	if pinos_para_sobrar > 0:
-		candidatos_sobreviventes.shuffle()
-		for i in range(min(pinos_para_sobrar, candidatos_sobreviventes.size())):
-			sobreviventes_escolhidos.append(candidatos_sobreviventes[i])
-
-	# ── Registra globalmente quais pinos estão protegidos ──
-	pinos_protegidos_sobreviventes = sobreviventes_escolhidos.duplicate()
-
-	# ── Reseta sobreviventes caso a física já os tenha derrubado ──
-	for num in sobreviventes_escolhidos:
-		var p = obter_pino_por_numero(num)
-		if p != null:
-			p.resetar()
-			if p.has_method("atualizar_posicao_base"):
-				p.atualizar_posicao_base()
+	pinos_protegidos_sobreviventes.clear()
 
 	var grupos: Array = [
 		[1],
@@ -3180,15 +3173,17 @@ func contar_pinos_em_pe() -> int:
 
 func obter_pin_extremo(tecla: String):
 	if tecla == "Z":
-		var p7 = obter_pino_por_numero(7)
-		if p7 != null and not p7.derrubado:
-			return p7
+		for numero in [7, 4, 2]:
+			var p_esq = obter_pino_por_numero(numero)
+			if p_esq != null and not p_esq.derrubado:
+				return p_esq
 		return null
 
 	if tecla == "B":
-		var p10 = obter_pino_por_numero(10)
-		if p10 != null and not p10.derrubado:
-			return p10
+		for numero in [10, 6, 3]:
+			var p_dir = obter_pino_por_numero(numero)
+			if p_dir != null and not p_dir.derrubado:
+				return p_dir
 		return null
 
 	return null
@@ -3655,7 +3650,7 @@ func criar_modal_inatividade() -> void:
  
 	# Fundo escuro
 	modal_inatividade_bg = ColorRect.new()
-	modal_inatividade_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(modal_inatividade_bg)
 	modal_inatividade_bg.color        = Color(0, 0, 0, 0.72)
 	modal_inatividade_bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay_inatividade.add_child(modal_inatividade_bg)
@@ -3755,7 +3750,7 @@ func criar_modal_inatividade() -> void:
 func centralizar_modal_inatividade() -> void:
 	if modal_inatividade_panel == null:
 		return
-	var tela: Vector2 = get_viewport_rect().size
+	var tela: Vector2 = Tela.retangulo().size
 	modal_inatividade_panel.position = Vector2(
 		(tela.x - modal_inatividade_panel.size.x) * 0.5,
 		(tela.y - modal_inatividade_panel.size.y) * 0.5
@@ -3982,8 +3977,12 @@ func iniciar_jogo(mostrar_banner_inicial: bool = true) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if ArcadeControls.eh_config(event):
+		get_tree().change_scene_to_file("res://scene/configuracao_tvbox.tscn")
+		get_viewport().set_input_as_handled()
+		return
 	if modal_inatividade_ativo:
-		if event.is_action_pressed("input_start"):
+		if ArcadeControls.eh_start(event):
 			fechar_modal_inatividade()
 			get_viewport().set_input_as_handled()
 		return
@@ -3993,13 +3992,6 @@ func _input(event: InputEvent) -> void:
 
 	if _evento_conta_como_atividade(event):
 		registrar_atividade_usuario()
-
-	if event is InputEventKey:
-		var key_event: InputEventKey = event
-		if key_event.pressed and not key_event.echo:
-			if key_event.keycode == KEY_T:
-				get_tree().change_scene_to_file(CENA_TESTE)
-				return
 
 	if tela_final_ativa:
 		if final_intro_em_andamento:
@@ -4023,18 +4015,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _evento_acionou_restart(event: InputEvent) -> bool:
-	# >>> ACTION <<<
-	if event.is_action_pressed("input_start"):
-		return true
+	return ArcadeControls.eh_start(event)
 
-	# >>> TECLA 1 <<<
-	if event is InputEventKey:
-		var key_event: InputEventKey = event
-		if key_event.pressed and not key_event.echo:
-			if key_event.keycode == KEY_1 or key_event.keycode == KEY_KP_1:
-				return true
-
-	return false
 
 func _aplicar_fonte_painel(lbl: Label, tamanho: int, cor: Color, outline: int = 4) -> void:
 	if lbl == null:
@@ -4154,29 +4136,7 @@ func _animar_label_arcade(lbl: Label, cor: Color, strike: bool = false) -> void:
 
 
 func _obter_tecla_da_action(event: InputEvent) -> String:
-	# INPUTS PERSONALIZADOS DO PROJETO
-	for acao: String in ACOES_JOGO.keys():
-		if event.is_action_pressed(acao):
-			return String(ACOES_JOGO[acao])
-
-	# ESPELHO PELO TECLADO FÍSICO
-	if event is InputEventKey:
-		var key_event: InputEventKey = event
-
-		if key_event.pressed and not key_event.echo:
-			match key_event.keycode:
-				KEY_Z:
-					return "Z"
-				KEY_X:
-					return "X"
-				KEY_C:
-					return "C"
-				KEY_V:
-					return "V"
-				KEY_B:
-					return "B"
-
-	return ""
+	return ArcadeControls.tecla_jogada(event)
 
 
 func _estilo_neon(bg: Color, borda: Color, raio: int = 28, espessura: int = 3) -> StyleBoxFlat:
@@ -4328,7 +4288,7 @@ func _process(delta: float) -> void:
 	tempo_hover_acc += delta
 	tempo_hud_acc += delta
 
-	if tempo_hover_acc >= INTERVALO_UPDATE_HOVER:
+	if OS.get_name() != "Android" and tempo_hover_acc >= INTERVALO_UPDATE_HOVER:
 		tempo_hover_acc = 0.0
 		var mouse_pos: Vector2 = get_global_mouse_position()
 		for p in pins:
@@ -4762,7 +4722,7 @@ func efeito_spare_total() -> void:
 	add_child(layer)
 
 	var flash_suave := ColorRect.new()
-	flash_suave.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(flash_suave)
 	flash_suave.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flash_suave.color = Color(1.0, 0.84, 0.34, 0.0)
 	layer.add_child(flash_suave)
@@ -4823,6 +4783,9 @@ func _on_bola_impacto_no_deck(dados: Dictionary) -> void:
 		return
 
 	var principal = obter_primeiro_pin_atingido_fisico(ponto_impacto)
+	# Nas extremidades o botao sempre mira o pino externo ainda em pe.
+	if ultima_tecla_jogada in ["Z", "B"]:
+		principal = obter_pin_extremo(ultima_tecla_jogada)
 
 	if principal == null and ultima_tecla_jogada in ["Z", "B"] and _garantia_borda_na_abertura():
 		principal = obter_pin_extremo(ultima_tecla_jogada)
@@ -4868,7 +4831,10 @@ func _on_bola_impacto_no_deck(dados: Dictionary) -> void:
 	if principal.has_method("impacto_visual"):
 		principal.impacto_visual(clamp(forca, 0.95, 1.18), ponto_contato_real)
 
-	if bloquear_spare_pos_lateral_c:
+	if ultima_tecla_jogada in ["Z", "B"]:
+		# Um unico pino, sem propagacao de colisao para os vizinhos.
+		principal.forcar_queda_imediata("down_rt" if ultima_tecla_jogada == "Z" else "down_left", 1.08, ponto_contato_real)
+	elif bloquear_spare_pos_lateral_c:
 		await _forcar_c_depois_lateral(ponto_contato_real)
 	else:
 		_empurrar_pinos_proximos_da_passagem(ponto_contato_real, principal, forca)
@@ -4880,7 +4846,7 @@ func _on_bola_impacto_no_deck(dados: Dictionary) -> void:
 	if ultima_tecla_jogada == "C":
 		await _forcar_strike_central_se_preciso(ponto_contato_real)
 
-	if ultima_tecla_jogada not in ["X", "V"]:
+	if ultima_tecla_jogada == "C":
 		_aplicar_quase_queda_ao_redor(principal, -1, ponto_contato_real)
 
 	if bola != null and bola.has_method("tocar_passagem_por_cima_dos_pinos"):
@@ -5301,13 +5267,13 @@ func efeito_strike_total() -> void:
 	add_child(layer)
 
 	var flash_quente := ColorRect.new()
-	flash_quente.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(flash_quente)
 	flash_quente.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flash_quente.color = Color(1.0, 0.62, 0.12, 0.0)
 	layer.add_child(flash_quente)
 
 	var flash_branco := ColorRect.new()
-	flash_branco.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(flash_branco)
 	flash_branco.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flash_branco.color = Color(1, 1, 1, 0.0)
 	layer.add_child(flash_branco)
@@ -5875,7 +5841,7 @@ func voltar_para_main() -> void:
 	var caminho: String = cena_main_path.strip_edges()
 
 	if caminho.is_empty():
-		caminho = "res://Main Menu.tscn"
+		caminho = "res://scene/Main Menu.tscn"
 
 	if not ResourceLoader.exists(caminho):
 		push_error("Cena não encontrada: " + caminho)
@@ -6558,7 +6524,7 @@ func _efeito_fim_de_jogo_visual() -> void:
 		final_logo.modulate = Color(1, 1, 1, 0.0)
 		final_logo.scale = Vector2(0.72, 0.72)
 
-	var tela: Vector2 = get_viewport_rect().size
+	var tela: Vector2 = Tela.retangulo().size
 	var centro_x: float = tela.x * 0.5
 	var centro_y: float = tela.y * 0.5
 
@@ -6661,7 +6627,7 @@ func criar_cortina_inicio() -> void:
 	add_child(overlay_transicao_inicio)
 
 	cortina_inicio = ColorRect.new()
-	cortina_inicio.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(cortina_inicio)
 	cortina_inicio.color = Color(0, 0, 0, 1.0)
 	cortina_inicio.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay_transicao_inicio.add_child(cortina_inicio)

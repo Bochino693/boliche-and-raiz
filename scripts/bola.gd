@@ -15,7 +15,7 @@ var player_roll_solto_atual: AudioStreamPlayer = null
 @export var opacidade_longe: float = 0.90
 
 @export var margem_spawn_inferior: float = 180.0
-@export var y_impacto_base: float = 780.0
+@export var y_impacto_base: float = 745.0
 @export var y_cacapa_base: float = 500.0
 @export var deslocamento_cacapa_x: float = 12.0
 
@@ -256,7 +256,7 @@ func sumir_no_impacto() -> void:
 
 
 func atualizar_posicoes_base() -> void:
-	var tela: Vector2 = get_viewport_rect().size
+	var tela: Vector2 = Tela.retangulo().size
 	if tela.x <= 0.0 or tela.y <= 0.0:
 		return
 
@@ -278,8 +278,8 @@ func lancar_bola(direcao: Vector2, forca: float = 1.0, spin: float = 0.0) -> voi
 	lateral_alvo = clamp(direcao.x, -0.78, 0.78)
 
 	var fator_forca: float = inverse_lerp(0.96, 1.14, clamp(forca, 0.96, 1.14))
-	duracao_atual = lerp(1.18, 0.98, fator_forca)
-	duracao_atual = clamp(duracao_atual, 0.98, 1.22)
+	duracao_atual = lerp(0.82, 0.68, fator_forca)
+	duracao_atual = clamp(duracao_atual, 0.68, 0.82)
 
 	p0 = pos_inicial
 

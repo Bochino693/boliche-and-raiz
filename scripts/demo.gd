@@ -96,6 +96,10 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("input_teste"):
+		get_tree().change_scene_to_file("res://scene/configuracao_tvbox.tscn")
+		get_viewport().set_input_as_handled()
+		return
 	if not demo_ativa:
 		return
 	if demo_encerrando:
@@ -108,19 +112,11 @@ func _input(event: InputEvent) -> void:
 
 	# START abre o jogo
 	# START abre o jogo com som da moeda
-	if event.is_action_pressed("input_start"):
+	if ArcadeControls.eh_start(event):
 		get_viewport().set_input_as_handled()
 		_abrir_jogo_com_moeda()
 		return
 
-	# Tecla 1 também abre o jogo
-	if event is InputEventKey:
-		var key_event: InputEventKey = event
-		if key_event.pressed and not key_event.echo:
-			if key_event.keycode == KEY_1 or key_event.keycode == KEY_KP_1:
-				get_viewport().set_input_as_handled()
-				_abrir_jogo_com_moeda()
-				return
 
 
 func _unhandled_input(event: InputEvent) -> void:

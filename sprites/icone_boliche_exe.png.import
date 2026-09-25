@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://diu4f7k5gjmma"
-path="res://.godot/imported/boliccheeee.png-294e77163a95f9a2dc3afa93ad328063.ctex"
+uid="uid://dq0qpytnf2sia"
+path="res://.godot/imported/icone_boliche_exe.png-d339cfb9d536326e7db1a2ffb0838f97.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/boliccheeee.png"
-dest_files=["res://.godot/imported/boliccheeee.png-294e77163a95f9a2dc3afa93ad328063.ctex"]
+source_file="res://sprites/icone_boliche_exe.png"
+dest_files=["res://.godot/imported/icone_boliche_exe.png-d339cfb9d536326e7db1a2ffb0838f97.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

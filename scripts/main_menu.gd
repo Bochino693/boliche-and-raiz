@@ -18,17 +18,18 @@ const CENA_DEMO = "res://scene/demo.tscn"
 const TEMPO_ESPERA = 2.0
 const TEMPO_ATE_DEMO = 80.0
 const CAMINHO_LOGO = "res://sprites/logoofi.png"
-const CENA_TESTE = "res://scene/teste.tscn"
+const CENA_TESTE = "res://scene/configuracao_tvbox.tscn"
 const ACAO_ENTRAR_TESTE = "input_teste"
 
 const CAMINHO_SOM_COIN = "res://songs/coin.mp3"
 var som_coin: AudioStream = null
 var audio_coin_player: AudioStreamPlayer = null
+var lbl_creditos: Label = null
 
 
 var seletor_jogadores_ativo: bool = false
 var pulsos_start: int = 0
-var tempo_selecao_jogadores: float = 10.0
+var tempo_selecao_jogadores: float = 3.0
 var timer_selecao_jogadores: float = 0.0
 
 var layer_selecao_jogadores: CanvasLayer = null
@@ -52,11 +53,8 @@ const CAMINHO_MUSICA = "res://songs/song.ogg"
 const OFFSET_INICIAL_MUSICA = 3.0
 
 # SOM DO BOTÃO
-const CAMINHO_SOM_BOTAO = "res://songs/button_click.ogg"
+const CAMINHO_SOM_BOTAO = "res://songs/coin.mp3"
 const VOLUME_SOM_BOTAO_DB = -2.0
-
-var fade_transition: ColorRect = null
-var fade_layer: CanvasLayer = null
 
 var pode_iniciar: bool = true
 var escala_original: Vector2 = Vector2.ONE
@@ -105,7 +103,6 @@ func _ready() -> void:
 
 	_configurar_botao()
 	_criar_logo_empresa()
-	_criar_fade_transition()
 
 	await get_tree().process_frame
 
@@ -119,14 +116,13 @@ func _ready() -> void:
 	if viewport != null and not viewport.size_changed.is_connected(_on_viewport_size_changed):
 		viewport.size_changed.connect(_on_viewport_size_changed)
 
-	# continua conectado por segurança, mas o clique do mouse ficará bloqueado
-	if not start_button.pressed.is_connected(_on_start_button_pressed):
-		start_button.pressed.connect(_on_start_button_pressed)
+	# O START da arcade vem exclusivamente da ação input_start.
+	if start_button.pressed.is_connected(_on_start_button_pressed):
+		start_button.pressed.disconnect(_on_start_button_pressed)
+	start_button.focus_mode = Control.FOCUS_NONE
 
 
 func _process(delta: float) -> void:
-	_forcar_ocultar_cursor()
-
 	if seletor_jogadores_ativo:
 		timer_selecao_jogadores -= delta
 		_atualizar_texto_selecao_jogadores()
@@ -166,7 +162,7 @@ func _registrar_pulso_start() -> void:
 
 	if pulsos_start < 2:
 		pulsos_start = 2
-		timer_selecao_jogadores = 2.2
+		timer_selecao_jogadores = 0.35
 		_enviar_led("RED")
 		_tocar_som_coin()
 		_atualizar_texto_selecao_jogadores()
@@ -178,7 +174,7 @@ func _registrar_pulso_start() -> void:
 			tw.tween_property(card_player_2, "scale", Vector2(1.08, 1.08), 0.18)\
 				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
-		await get_tree().create_timer(2.2).timeout
+		await get_tree().create_timer(0.35).timeout
 
 		if seletor_jogadores_ativo and pulsos_start >= 2:
 			_confirmar_quantidade_jogadores()
@@ -193,21 +189,21 @@ func _criar_overlay_selecao_jogadores() -> void:
 	layer_selecao_jogadores.layer = 1000
 	add_child(layer_selecao_jogadores)
 
-	var tela: Vector2 = get_viewport_rect().size
+	var tela: Vector2 = Tela.retangulo().size
 
 	var fundo := TextureRect.new()
 	if ResourceLoader.exists("res://sprites/bg_players_select.png"):
 		fundo.texture = load("res://sprites/bg_players_select.png")
 	fundo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	fundo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	fundo.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(fundo)
 	fundo.modulate = Color(1, 1, 1, 0.82)
 	fundo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer_selecao_jogadores.add_child(fundo)
 
 	var dark := ColorRect.new()
 	dark.color = Color(0.0, 0.0, 0.0, 0.48)
-	dark.set_anchors_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(dark)
 	dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer_selecao_jogadores.add_child(dark)
 
@@ -496,9 +492,9 @@ func _criar_overlay_selecao_jogadores() -> void:
 	linha_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	painel_selecao_jogadores.add_child(linha_base)
 
-	painel_selecao_jogadores.scale = Vector2(0.84, 0.84)
+	painel_selecao_jogadores.scale = Vector2(0.94, 0.94)
 	painel_selecao_jogadores.modulate.a = 0.0
-	glow_modal.scale = Vector2(0.84, 0.84)
+	glow_modal.scale = Vector2(0.94, 0.94)
 	glow_modal.modulate.a = 0.0
 	
 	_aplicar_estado_cards_players()
@@ -513,10 +509,10 @@ func _criar_overlay_selecao_jogadores() -> void:
 
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(painel_selecao_jogadores, "scale", Vector2.ONE, 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(painel_selecao_jogadores, "modulate:a", 1.0, 0.20).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_property(glow_modal, "scale", Vector2.ONE, 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(glow_modal, "modulate:a", 1.0, 0.20).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(painel_selecao_jogadores, "scale", Vector2.ONE, 0.13).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(painel_selecao_jogadores, "modulate:a", 1.0, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(glow_modal, "scale", Vector2.ONE, 0.13).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(glow_modal, "modulate:a", 1.0, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 
@@ -680,8 +676,6 @@ func _ir_para_teste() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	_forcar_ocultar_cursor()
-
 	if not pode_iniciar:
 		return
 
@@ -693,34 +687,24 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	_forcar_ocultar_cursor()
-
 	if not pode_iniciar:
 		return
 
 	if demo_ativa_transicao:
 		return
 
-	if event.is_action_pressed(ACAO_ENTRAR_TESTE):
+	if ArcadeControls.eh_config(event):
 		print("TESTE VIA ACTION input_teste")
 		_resetar_timer_demo()
 		_ir_para_teste()
 		return
 
-	if event.is_action_pressed("input_start"):
+	if ArcadeControls.eh_start(event):
 		print("START VIA ACTION")
 		_resetar_timer_demo()
 		_registrar_pulso_start()
 		return
 
-	if event is InputEventKey:
-		var key_event: InputEventKey = event
-		if key_event.pressed and not key_event.echo:
-			if key_event.keycode == KEY_1 or key_event.keycode == KEY_KP_1:
-				print("START VIA TECLA 1")
-				_resetar_timer_demo()
-				_registrar_pulso_start()
-				return
 
 
 
@@ -810,7 +794,7 @@ func _ajustar_layout() -> void:
 
 
 func _ajustar_fundo() -> void:
-	var tela: Vector2 = get_viewport_rect().size
+	var tela: Vector2 = Tela.retangulo().size
 	if tela.x <= 0.0 or tela.y <= 0.0:
 		return
 
@@ -901,7 +885,7 @@ func _iniciar_animacao_logo() -> void:
 
 
 func _ajustar_rodape() -> void:
-	var tela: Vector2 = get_viewport_rect().size
+	var tela: Vector2 = Tela.retangulo().size
 	if tela.x <= 0.0 or tela.y <= 0.0:
 		return
 
@@ -1155,18 +1139,14 @@ func _iniciar_jogo() -> void:
 		start_button.text = "STARTING..."
 		_animacao_click()
 
-	if audio_coin_player != null:
-		await audio_coin_player.finished
+	await get_tree().create_timer(0.12).timeout
 
 	if start_button != null:
 		start_button.disabled = true
 
-	await _fade_out_para_jogo()
-	_parar_musica_menu()
-
-	var erro: int = get_tree().change_scene_to_file(CENA_DO_JOGO)
-
-	if erro != OK:
+	# Monta a pista mantendo a imagem do menu até a nova cena estar pronta.
+	var recurso: PackedScene = load(CENA_DO_JOGO) as PackedScene
+	if recurso == null:
 		push_error("Erro ao carregar cena: " + CENA_DO_JOGO)
 		pode_iniciar = true
 
@@ -1177,11 +1157,15 @@ func _iniciar_jogo() -> void:
 			start_button.modulate = Color.WHITE
 			_iniciar_animacao_idle()
 
-		if fade_transition != null:
-			fade_transition.color = Color(0, 0, 0, 0.0)
-
 		_tocar_musica_menu()
 		_resetar_timer_demo()
+		return
+
+	_parar_musica_menu()
+	var pista: Node = recurso.instantiate()
+	get_tree().root.add_child(pista)
+	get_tree().current_scene = pista
+	queue_free()
 
 
 
@@ -1218,36 +1202,9 @@ func _iniciar_demo() -> void:
 
 
 
-func _criar_fade_transition() -> void:
-	if fade_layer != null:
-		return
-
-	fade_layer = CanvasLayer.new()
-	fade_layer.layer = 500
-	add_child(fade_layer)
-
-	fade_transition = ColorRect.new()
-	fade_transition.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fade_transition.color = Color(0, 0, 0, 0.0)
-	fade_transition.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fade_layer.add_child(fade_transition)
-
 func _forcar_ocultar_cursor() -> void:
-	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
-	DisplayServer.mouse_set_mode(DisplayServer.MOUSE_MODE_HIDDEN)
-
-
-func _fade_out_para_jogo() -> void:
-	if fade_transition == null:
-		return
-
-	fade_transition.color = Color(0, 0, 0, 0.0)
-
-	var tw: Tween = create_tween()
-	tw.tween_property(fade_transition, "color", Color(0, 0, 0, 1.0), 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	await tw.finished	
-
-
+	if Input.get_mouse_mode() != Input.MOUSE_MODE_HIDDEN:
+		Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
 
 func _configurar_led() -> void:
 	_led_pronto = false
@@ -1270,6 +1227,9 @@ func _enviar_led(evento: String) -> void:
 			pass
 		_:
 			return
+	if OS.get_name() == "Android":
+		ArduinoBridge.send_led(evento)
+		return
 
 	var ps := "$p=New-Object System.IO.Ports.SerialPort('%s',9600,'None',8,1);" % LED_COM
 	ps += "$p.DtrEnable=$false;$p.RtsEnable=$false;"

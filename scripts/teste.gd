@@ -77,7 +77,7 @@ func _executar_volta_menu() -> void:
 func _criar_interface() -> void:
 	var fundo := ColorRect.new()
 	fundo.color = Color(0.03, 0.04, 0.06, 0.97)
-	fundo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	Tela.cobrir_auto(fundo)
 	add_child(fundo)
 
 	var brilho_topo := ColorRect.new()

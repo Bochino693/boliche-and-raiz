@@ -1,6 +1,6 @@
 extends Node
 
-const CENA_MENU = "res://scene/main_menu.tscn"
+const CENA_MENU = "res://scene/Main Menu.tscn"
 
 func _ready() -> void:
 	var music_manager := get_node_or_null("/root/MusicManager")

@@ -1,5 +1,8 @@
 extends Node
 
+## Somente modo livre. Configuracoes antigas de credito sao ignoradas.
+var modo_livre: bool = true
+
 # ─────────────────────────────────────────────
 # CONFIGURAÇÃO GLOBAL DO JOGO
 # ─────────────────────────────────────────────

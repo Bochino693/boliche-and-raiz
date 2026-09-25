@@ -163,18 +163,10 @@ func obter_maior_tamanho_animacao(nome: String) -> Vector2:
 
 
 func _process(delta: float) -> void:
-	if sprite == null:
+	if sprite == null or not empurrando:
 		return
 
 	simular_empurrao(delta)
-
-	if hover and not derrubado:
-		sprite.modulate = Color(1.06, 1.06, 1.0, sprite.modulate.a)
-	else:
-		sprite.modulate = Color(1.0, 1.0, 1.0, sprite.modulate.a)
-
-	atualizar_tamanho_base(1.015 if hover and not derrubado else 1.0)
-	queue_redraw()
 
 
 func _draw() -> void:
@@ -327,10 +319,13 @@ func foi_clicado(mouse_global: Vector2) -> bool:
 
 
 func atualizar_hover(mouse_global: Vector2) -> void:
-	if derrubado:
-		hover = false
-		return
-	hover = foi_clicado(mouse_global)
+	var novo_hover: bool = not derrubado and foi_clicado(mouse_global)
+	if hover != novo_hover:
+		hover = novo_hover
+		if sprite != null:
+			sprite.modulate = Color(1.06, 1.06, 1.0, sprite.modulate.a) if hover else Color(1, 1, 1, sprite.modulate.a)
+		atualizar_tamanho_base(1.015 if hover else 1.0)
+		queue_redraw()
 
 
 func receber_forca(forca_vec: Vector2, magnitude: float, origem: Vector2) -> void:
@@ -822,7 +817,7 @@ func resetar() -> void:
 	if sprite != null:
 		sprite.visible = true
 		sprite.material = null
-		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		sprite.modulate = Color(1, 1, 1, 1)
 		sprite.rotation_degrees = 0.0
 		sprite.skew = 0.0
@@ -860,7 +855,9 @@ func aplicar_shader_borda_suave() -> void:
 		return
 
 	sprite.material = null
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	# Os frames de 200 a 1024 px sao reduzidos na pista; mipmaps
+	# evitam serrilhado e cintilacao nas bordas dos pinos.
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 
 func forcar_queda_imediata(animacao: String, intensidade: float = 3.0, origem_impacto: Vector2 = Vector2.ZERO) -> void:

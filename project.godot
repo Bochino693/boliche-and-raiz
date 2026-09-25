@@ -11,10 +11,12 @@ config_version=5
 [application]
 
 config/name="Dragon Bowling"
-config/version="2.0.0-pro-ultra-android10"
+config/version="2.0.1-pro-ultra-android10"
 run/main_scene="res://scene/Main Menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 boot_splash/show_image=false
+boot_splash/bg_color=Color(0, 0, 0, 1)
+config/quit_on_go_back=false
 config/icon="res://sprites/icone_dragon_bowling_exe.png"
 
 [autoload]
@@ -83,6 +85,7 @@ input_teste={
 
 [rendering]
 
+environment/defaults/default_clear_color=Color(0, 0, 0, 1)
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

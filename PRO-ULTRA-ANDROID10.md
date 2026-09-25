@@ -15,10 +15,34 @@ Esta variante parte do projeto atualizado `boliche-and-raiz`. Preserva as cenas,
 | SELECT | `input_credit` | 7 |
 | L3, configurações | `input_teste` | 8 |
 
-O jogo funciona em modo livre. START abre rapidamente a escolha de um ou dois jogadores. Sem um segundo START, inicia com um jogador após 3 segundos; com o segundo START, inicia com dois jogadores após 0,35 segundo. L3 abre a tela de diagnóstico dos botões. Configure os botões no Input Map do projeto (`input_start`, `input_z`, `input_x`, `input_c`, `input_v`, `input_b` e `input_teste`); o código usa estas ações sem substituí-las na inicialização. Quadrado e R1 derrubam somente um pino na faixa externa; a bolinha derruba os dez pinos quando o rack está completo. A passagem do menu para a pista conserva a imagem do menu até a cena do jogo estar pronta, sem cortina ou tela de carregamento. Apenas a placa Zero Delay possui eventos padrão no Input Map; ajuste os índices no Godot conforme a sua placa. Nenhum comando de teclado ou botão OK do controle remoto inicia a partida. O shader animado de fundo é omitido na TV Box para reduzir carga da GPU, mantendo os efeitos de bola, pinos, HUD e resultados. No Android esta variante exporta usando o APK pronto do Godot, sem Gradle: a Zero Delay funciona via HID, mas LEDs conectados ao Arduino USB não funcionarão neste APK. A saída COM4 para LED segue disponível nos testes no PC.
+### Botões: só a placa Zero Delay
+
+Os comandos do jogo vêm **somente** dos botões da Zero Delay. Teclado, controle remoto da TV Box (OK, MENU, VOLTAR) e as ações `ui_*` do Godot não fazem nada; o VOLTAR do remoto também não fecha mais o jogo.
+
+O Android numera os botões da placa de outro jeito que o Windows. Por isso o mapeamento é **gravado na própria TV Box**:
+
+1. Na primeira vez que o APK abre, aparece a tela **CONFIGURAR BOTÕES DA PLACA**.
+2. Aperte, na ordem pedida: START, Z (quadrado), X, C (bolinha), V (triângulo), B (R1), SELECT e L3.
+3. Um botão já usado é recusado. No fim aparece **PRONTO!** e o jogo volta ao menu.
+
+Para refazer: L3 em qualquer tela, ou segure qualquer botão da placa por 5 segundos no menu. Se ninguém apertar nada por 20 segundos, a tela volta ao menu sem alterar nada. Sem mapeamento gravado, valem os índices do Input Map da tabela acima.
+
+### Partida
+
+O jogo funciona em modo livre. START abre a escolha de um ou dois jogadores. Sem um segundo START, inicia com um jogador após 3 segundos; com o segundo START, inicia com dois jogadores após 0,35 segundo.
+
+Não há tela de carregamento: a pista é carregada em segundo plano enquanto o menu está na tela. No START, a última imagem do menu se desfaz por cima enquanto a pista monta (painéis e pinos entrando). Nenhuma tela cinza aparece entre as telas.
+
+### Desempenho na TV Box
+
+- O jogo desenha no tamanho dele (1536 × 1024) e a imagem pronta é ampliada para o HDMI. Antes ele desenhava na resolução da saída (até 4K), o que multiplicava o trabalho da placa de vídeo.
+- O brilho animado das canaletas voltou na TV Box. As máscaras vêm prontas em `sprites/pista_mascara.png` (gerada por `tools/gerar_mascara_pista.py`) e o shader é compilado ainda no menu.
+- As animações de montagem da pista rodam na velocidade normal.
+
+No Android esta variante exporta usando o APK pronto do Godot, sem Gradle: a Zero Delay funciona via HID, mas LEDs conectados ao Arduino USB não funcionam neste APK. A saída COM4 para LED segue disponível nos testes no PC.
 
 ## Gerar o APK no Windows
 
-Extraia o ZIP inteiro em uma pasta nova e execute `GERAR_APK_PRO_ULTRA.bat`. É necessário ter Godot 4.6.1, JDK 17, Android SDK e os Export Templates 4.6.1; o BAT baixa os templates se estiverem ausentes. A exportação chama o Godot diretamente, seguindo o fluxo do `GERAR_APK_TX9.ps1` do projeto original e evitando a sessão extra de importação que falha no Windows. O BAT corrige no preset as opções que só funcionam com Gradle: Min SDK, SDK Alvo e a inclusão no launcher específico da Android TV. O APK pode ser instalado e aberto na TV Box pelo gerenciador de arquivos. O BAT fica aberto e grava `build/android/GERACAO-COMPLETA.log`; a pasta `APK-Pronto` contém apenas o APK. O APK sai em `APK-Pronto/DragonBowling-Pro-Ultra-Android10.apk`. Se a imagem ficar de cabeça para baixo no monitor em pé, execute `GERAR_APK_PRO_ULTRA.bat -Giro -1`.
+Extraia o ZIP inteiro em uma pasta nova e execute `GERAR_APK_PRO_ULTRA.bat`. É necessário ter Godot 4.6.1, JDK 17, Android SDK e os Export Templates 4.6.1; o BAT baixa os templates se estiverem ausentes. A exportação chama o Godot diretamente, seguindo o fluxo do `GERAR_APK_TX9.ps1` do projeto original e evitando a sessão extra de importação que falha no Windows. O BAT corrige no preset as opções que só funcionam com Gradle: Min SDK, SDK Alvo e a inclusão no launcher específico da Android TV. O APK pode ser instalado e aberto na TV Box pelo gerenciador de arquivos. O BAT fica aberto e grava `build/android/GERACAO-COMPLETA.log`. O Godot exporta em `build/android` (junto com os arquivos auxiliares da assinatura, como o `.idsig`); a pasta `APK-Pronto` é esvaziada a cada geração e recebe **somente o APK**. O APK sai em `APK-Pronto/DragonBowling-Pro-Ultra-Android10.apk`. Se a imagem ficar de cabeça para baixo no monitor em pé, execute `GERAR_APK_PRO_ULTRA.bat -Giro -1`.
 
 Se outro APK `com.lazersport.dragonbowling` já estiver instalado com assinatura diferente, faça backup dos dados antes de desinstalá-lo. Confirme na própria Pro Ultra os índices de botões que o firmware da Zero Delay apresenta: algumas placas enviam outros índices. A compilação e os controles físicos precisam desse teste no equipamento.

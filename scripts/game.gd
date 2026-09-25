@@ -25,6 +25,8 @@ var tween_placar_player_vez: Tween = null
 var ultimo_player_animado_placar: int = -1
 
 const FONTE_PAINEL_PATH := "res://fonts/painel_arcade.ttf"
+const CAMINHO_MASCARA_PISTA := "res://sprites/pista_mascara.png"
+const CAMINHO_SHADER_PISTA := "res://shaders/brilho_pista.gdshader"
 
 var hud_score_player_1_nome: Label = null
 var hud_score_player_1_valor: Label = null
@@ -567,58 +569,25 @@ func _ready() -> void:
 
 
 func _configurar_shader_brilho_fundo() -> void:
-	# Shader temporal em tela inteira custa muito no buffer HDMI da TV Box.
-	# Efeitos de pinos, bola, HUD e resultado continuam ativos.
-	if OS.get_name() == "Android":
-		return
+	# O brilho das canaletas e do dourado roda também na TV Box: as
+	# máscaras (onde fica cada coisa na imagem) vêm prontas numa textura
+	# pequena (tools/gerar_mascara_pista.py), e o shader só anima a luz.
 	if not animar_brilhos_fundo:
 		return
 	if fundo_fullscreen == null or not is_instance_valid(fundo_fullscreen):
 		return
 	if fundo_fullscreen.texture == null:
 		return
+	if not ResourceLoader.exists(CAMINHO_MASCARA_PISTA):
+		return
 
-	var shader: Shader = Shader.new()
-	var code: String = ""
-
-	code += "shader_type canvas_item;\n"
-	code += "uniform float intensidade : hint_range(0.0, 2.0) = 0.55;\n"
-	code += "uniform float velocidade : hint_range(0.0, 5.0) = 1.2;\n"
-	code += "uniform float limite_brilho : hint_range(0.0, 1.0) = 0.55;\n"
-	code += "uniform float erro_forca : hint_range(0.0, 1.0) = 0.0;\n"
-	code += "uniform vec3 cor_canaleta = vec3(0.0, 0.95, 1.0);\n"
-	code += "void fragment() {\n"
-	code += "	vec4 tex = texture(TEXTURE, UV);\n"
-	code += "	float cyan_mask = smoothstep(limite_brilho, 1.0, (tex.b * 1.2 + tex.g * 0.8) - tex.r * 1.4);\n"
-	code += "	float gold_mask = smoothstep(0.75, 1.0, (tex.r * 1.1 + tex.g * 1.0) * 0.5 - tex.b * 0.3);\n"
-	code += "	float lado_esq = smoothstep(0.0, 0.22, UV.x) * (1.0 - smoothstep(0.22, 0.38, UV.x));\n"
-	code += "	float lado_dir = smoothstep(0.62, 0.78, UV.x) * (1.0 - smoothstep(0.78, 1.0, UV.x));\n"
-	code += "	float mascara_canaleta = clamp(lado_esq + lado_dir, 0.0, 1.0);\n"
-	code += "	float mascara_y = smoothstep(0.08, 0.25, UV.y) * (1.0 - smoothstep(0.90, 1.0, UV.y));\n"
-	code += "	float mascara = cyan_mask * mascara_canaleta * mascara_y;\n"
-	code += "	float luz_subindo = fract(UV.y * 1.5 - TIME * velocidade * 0.28);\n"
-	code += "	float pulso_canaleta = smoothstep(0.0, 0.18, luz_subindo) * (1.0 - smoothstep(0.18, 0.55, luz_subindo));\n"
-	code += "	float pulso_global = 0.70 + 0.30 * sin(TIME * velocidade * 1.8 + UV.y * 12.0 + UV.x * 5.0);\n"
-	code += "	float pulso_gold = pulso_global * (0.55 + 0.45 * sin(TIME * velocidade * 2.6 + UV.x * 18.0));\n"
-	code += "	float brilho_canaleta = mascara * pulso_canaleta * intensidade;\n"
-	code += "	float brilho_gold = gold_mask * pulso_gold * intensidade * 0.45 * (1.0 - erro_forca);\n"
-	code += "	vec3 cor_gold = vec3(1.0, 0.88, 0.30);\n"
-	code += "	vec3 cor_base = tex.rgb;\n"
-	code += "	cor_base.g *= 1.0 - (mascara * erro_forca * 0.65);\n"
-	code += "	cor_base.b *= 1.0 - (mascara * erro_forca * 0.85);\n"
-	code += "	vec3 luz_normal = cor_canaleta * brilho_canaleta + cor_gold * brilho_gold;\n"
-	code += "	vec3 luz_erro = vec3(1.0, 0.0, 0.0) * (brilho_canaleta * 2.2 + mascara * 0.10);\n"
-	code += "	vec3 cor_final = cor_base + mix(luz_normal, luz_erro, erro_forca);\n"
-	code += "	COLOR = vec4(cor_final, tex.a);\n"
-	code += "}\n"
-
-	shader.code = code
+	var shader: Shader = load(CAMINHO_SHADER_PISTA)
 
 	fundo_shader_material = ShaderMaterial.new()
 	fundo_shader_material.shader = shader
 	fundo_shader_material.set_shader_parameter("intensidade", intensidade_brilho_fundo)
 	fundo_shader_material.set_shader_parameter("velocidade", velocidade_brilho_fundo)
-	fundo_shader_material.set_shader_parameter("limite_brilho", limite_brilho_fundo)
+	fundo_shader_material.set_shader_parameter("mascara", load(CAMINHO_MASCARA_PISTA))
 	fundo_shader_material.set_shader_parameter("cor_canaleta", Vector3(0.0, 0.95, 1.0))
 	fundo_shader_material.set_shader_parameter("erro_forca", 0.0)
 
@@ -2164,8 +2133,6 @@ func animar_intro_partida() -> void:
 
 	var tw: Tween = create_tween()
 	tw.set_parallel(true)
-	if OS.get_name() == "Android":
-		tw.set_speed_scale(3.0)
 	
 	if hud_fundo_moderno != null:
 		tw.tween_property(hud_fundo_moderno, "position", Vector2(28, 4), 0.78)\
@@ -4205,19 +4172,8 @@ func _criar_label(pai: Control, texto: String, pos: Vector2, tam: Vector2,
 
 
 func _evento_conta_como_atividade(event: InputEvent) -> bool:
-	if event is InputEventKey:
-		var k := event as InputEventKey
-		return k.pressed and not k.echo
-
-	if event is InputEventJoypadButton:
-		var jb := event as InputEventJoypadButton
-		return jb.pressed
-
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		return mb.pressed
-
-	return false
+	# Só a placa Zero Delay conta; teclado e controle remoto não.
+	return ArcadeControls.eh_atividade(event)
 
 func _process(delta: float) -> void:
 	if Input.get_mouse_mode() != Input.MOUSE_MODE_HIDDEN:
@@ -5847,6 +5803,7 @@ func voltar_para_main() -> void:
 		push_error("Cena não encontrada: " + caminho)
 		return
 
+	TransicaoFoto.cobrir(get_tree())
 	get_tree().change_scene_to_file(caminho)
 	
 

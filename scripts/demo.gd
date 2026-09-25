@@ -96,7 +96,7 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("input_teste"):
+	if ArcadeControls.eh_config(event):
 		get_tree().change_scene_to_file("res://scene/configuracao_tvbox.tscn")
 		get_viewport().set_input_as_handled()
 		return
@@ -132,34 +132,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _evento_conta_como_interacao(event: InputEvent) -> bool:
-	if event is InputEventKey:
-		var key_event: InputEventKey = event
-		return key_event.pressed and not key_event.echo
-
-	if event is InputEventMouseButton:
-		var mouse_event: InputEventMouseButton = event
-		return mouse_event.pressed
-
-	if event is InputEventMouseMotion:
-		var motion_event: InputEventMouseMotion = event
-		return motion_event.relative.length() > 0.0
-
-	if event is InputEventJoypadButton:
-		var joy_button: InputEventJoypadButton = event
-		return joy_button.pressed
-
-	if event is InputEventJoypadMotion:
-		var joy_motion: InputEventJoypadMotion = event
-		return abs(joy_motion.axis_value) >= 0.35
-
-	if event is InputEventScreenTouch:
-		var touch_event: InputEventScreenTouch = event
-		return touch_event.pressed
-
-	if event is InputEventScreenDrag:
-		return true
-
-	return false
+	# Só a placa Zero Delay conta; teclado e controle remoto não.
+	return ArcadeControls.eh_atividade(event)
 
 
 func abrir_jogo() -> void:
@@ -213,6 +187,7 @@ func _trocar_cena_seguro(caminho: String) -> void:
 	if tree == null:
 		return
 
+	TransicaoFoto.cobrir(tree)
 	var erro: int = tree.change_scene_to_file(caminho)
 	if erro != OK:
 		push_error("Erro ao trocar cena para: " + caminho)

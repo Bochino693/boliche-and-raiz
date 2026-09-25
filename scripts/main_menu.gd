@@ -14,6 +14,19 @@ var _led_pronto: bool = false
 @onready var start_button = $"Button Manager/start_button"
 
 const CENA_DO_JOGO = "res://scene/game.tscn"
+## CARREGADOS EM SEGUNDO PLANO enquanto o menu está na tela: na hora do
+## START a pista já está pronta na memória e monta sem engasgo.
+const PRECARGA := [
+	"res://scene/game.tscn",
+	"res://songs/pinos_queda.mp3", "res://songs/song_ini.mp3", "res://songs/song-1.mp3",
+	"res://songs/end-game.mp3", "res://songs/coin.mp3", "res://songs/erro.mp3",
+	"res://songs/spare.mp3", "res://songs/strike-1.mp3", "res://songs/strike-2.mp3",
+	"res://songs/strike-3.mp3", "res://songs/bola-roll_.mp3",
+	"res://fonts/arcade_impact.ttf", "res://fonts/painel_arcade.ttf", "res://sprites/logoofi.png",
+	"res://sprites/pista_mascara.png",
+]
+const SHADER_DA_PISTA := preload("res://shaders/brilho_pista.gdshader")
+var _precarga_pendente: Array = []
 const CENA_DEMO = "res://scene/demo.tscn"
 const TEMPO_ESPERA = 2.0
 const TEMPO_ATE_DEMO = 80.0
@@ -88,6 +101,13 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	_forcar_ocultar_cursor()
+	# Primeira vez nesta TV Box: pede os botões da placa um por um.
+	if OS.get_name() == "Android" and not ArcadeControls.mapeamento_gravado and not GameConfig.assistente_de_botoes_ja_ofertado:
+		GameConfig.assistente_de_botoes_ja_ofertado = true
+		get_tree().change_scene_to_file.call_deferred(CENA_TESTE)
+		return
+	_iniciar_precarga()
+	_aquecer_shader_da_pista()
 	
 	_configurar_led()
 	call_deferred("_enviar_led", "MENU")
@@ -122,12 +142,48 @@ func _ready() -> void:
 	start_button.focus_mode = Control.FOCUS_NONE
 
 
+func _iniciar_precarga() -> void:
+	for caminho: String in PRECARGA:
+		if GameConfig.precarregados.has(caminho) or not ResourceLoader.exists(caminho):
+			continue
+		if ResourceLoader.load_threaded_request(caminho) == OK:
+			_precarga_pendente.append(caminho)
+
+
+## Compila o shader do brilho da pista já no menu, num pontinho quase
+## invisível no canto: compilar na primeira imagem da pista engasgava.
+func _aquecer_shader_da_pista() -> void:
+	var ponto := Sprite2D.new()
+	ponto.texture = load("res://sprites/pista_mascara.png")
+	ponto.centered = false
+	ponto.scale = Vector2(0.004, 0.004)
+	ponto.modulate = Color(1, 1, 1, 0.02)
+	var mat := ShaderMaterial.new()
+	mat.shader = SHADER_DA_PISTA
+	mat.set_shader_parameter("mascara", ponto.texture)
+	ponto.material = mat
+	add_child(ponto)
+
+
+func _colher_precarga() -> void:
+	for i in range(_precarga_pendente.size() - 1, -1, -1):
+		var caminho: String = _precarga_pendente[i]
+		var estado := ResourceLoader.load_threaded_get_status(caminho)
+		if estado == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			continue
+		if estado == ResourceLoader.THREAD_LOAD_LOADED:
+			GameConfig.precarregados[caminho] = ResourceLoader.load_threaded_get(caminho)
+		_precarga_pendente.remove_at(i)
+
+
 func _process(delta: float) -> void:
+	if not _precarga_pendente.is_empty():
+		_colher_precarga()
 	if seletor_jogadores_ativo:
 		timer_selecao_jogadores -= delta
 		_atualizar_texto_selecao_jogadores()
 
-	if timer_selecao_jogadores <= 0.0 and pulsos_start < 2:
+	if seletor_jogadores_ativo and timer_selecao_jogadores <= 0.0 and pulsos_start < 2:
 		_confirmar_quantidade_jogadores()
 	
 	if not pode_iniciar:
@@ -709,16 +765,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _evento_conta_como_interacao(event: InputEvent) -> bool:
-	if event is InputEventKey:
-		return event.pressed and not event.echo
-
-	if event is InputEventMouseButton:
-		return event.pressed
-
-	if event is InputEventMouseMotion:
-		return event.relative.length() > 0.0
-
-	return false
+	# Só a placa Zero Delay conta; teclado e controle remoto não.
+	return ArcadeControls.eh_atividade(event)
 
 
 func _resetar_timer_demo() -> void:
@@ -1145,7 +1193,13 @@ func _iniciar_jogo() -> void:
 		start_button.disabled = true
 
 	# Monta a pista mantendo a imagem do menu até a nova cena estar pronta.
-	var recurso: PackedScene = load(CENA_DO_JOGO) as PackedScene
+	var recurso: PackedScene = GameConfig.precarregados.get(CENA_DO_JOGO) as PackedScene
+	if recurso == null:
+		if CENA_DO_JOGO in _precarga_pendente:
+			recurso = ResourceLoader.load_threaded_get(CENA_DO_JOGO) as PackedScene
+			_precarga_pendente.erase(CENA_DO_JOGO)
+		else:
+			recurso = load(CENA_DO_JOGO) as PackedScene
 	if recurso == null:
 		push_error("Erro ao carregar cena: " + CENA_DO_JOGO)
 		pode_iniciar = true
@@ -1162,6 +1216,9 @@ func _iniciar_jogo() -> void:
 		return
 
 	_parar_musica_menu()
+	# A última imagem do menu fica por cima e se desfaz enquanto a pista
+	# monta por baixo: sem tela de carregamento e sem quadro cinza.
+	TransicaoFoto.cobrir(get_tree())
 	var pista: Node = recurso.instantiate()
 	get_tree().root.add_child(pista)
 	get_tree().current_scene = pista
@@ -1185,6 +1242,7 @@ func _iniciar_demo() -> void:
 
 	_parar_musica_menu()
 
+	TransicaoFoto.cobrir(get_tree())
 	var erro: int = get_tree().change_scene_to_file(CENA_DEMO)
 
 	if erro != OK:
